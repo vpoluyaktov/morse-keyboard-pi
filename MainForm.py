@@ -1,9 +1,9 @@
 import npyscreen
 
-class MainForm(npyscreen.Form):
+class MainForm(npyscreen.SplitForm):
 
     def create(self):
-        # F  = npyscreen.Form(name = "Welcome to Npyscreen")
+        self.name = "Welcome to Npyscreen"
         t  = self.add(npyscreen.TitleText, name = "Text:", )
         fn = self.add(npyscreen.TitleFilename, name = "Filename:",)
         fn2 = self.add(npyscreen.TitleFilenameCombo, name="Filename2:")
