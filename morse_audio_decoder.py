@@ -42,28 +42,30 @@ letter_space_length_max = dit_length_max * 3
 word_space_length_min = dit_length_min * 7
 word_space_length_max = dit_length_max * 7
 
-print(dit_length_ms, dit_length_min, dit_length_max)
-print(dah_length_ms, dah_length_min, dah_length_max)
-print(char_space_length_min, char_space_length_max)
-print(letter_space_length_min, letter_space_length_max)
-print(word_space_length_min, word_space_length_max)
+print("dit: ", dit_length_ms, "ms ", dit_length_min, "-", dit_length_max)
+print("dah: ", dah_length_ms, "ms ", dah_length_min, "-", dah_length_max)
+print("char: ", char_space_length_min, "-", char_space_length_max)
+print("letter: ", letter_space_length_min, "-", letter_space_length_max)
+print("word: ", word_space_length_min, "-", word_space_length_max)
 
 WINDOW = letter_space_length_min
 
 letter_to_morse = {
-	"a" : ".-",	"b" : "-...",	"c" : "-.-.",
-	"d" : "-..",	"e" : ".",	"f" : "..-.",
-	"g" : "--.",	"h" : "....",	"i" : "..",
-	"j" : ".---",	"k" : "-.-",	"l" : ".-..",
-	"m" : "--",	"n" : "-.",	"o" : "---",
-	"p" : ".--.",	"q" : "--.-",	"r" : ".-.",
-	"s" : "...",	"t" : "-",	"u" : "..-",
-	"v" : "...-",	"w" : ".--",	"x" : "-..-",
-	"y" : "-.--",	"z" : "--..",	"1" : ".----",
-	"2" : "..---",	"3" : "...--",	"4" : "....-",
-	"5" : ".....", 	"6" : "-....",	"7" : "--...",
-	"8" : "---..",	"9" : "----.",	"0" : "-----",
-	" " : "/"}
+    "A" : ".-",     "B" : "-...",    "C" : "-.-.",
+    "D" : "-..",    "E" : ".",       "F" : "..-.",
+    "G" : "--.",    "H" : "....",    "I" : "..",
+    "J" : ".---",   "K" : "-.-",     "L" : ".-..",
+    "M" : "--",     "N" : "-.",      "O" : "---",
+    "P" : ".--.",   "Q" : "--.-",    "R" : ".-.",
+    "S" : "...",    "T" : "-",       "U" : "..-",
+    "V" : "...-",   "W" : ".--",     "X" : "-..-",
+    "Y" : "-.--",   "Z" : "--..",    "1" : ".----",
+    "2" : "..---",  "3" : "...--",   "4" : "....-",
+    "5" : ".....",  "6" : "-....",   "7" : "--...",
+    "8" : "---..",  "9" : "----.",   "0" : "-----",
+    "?" : "..--..", "." : ".-.-.-",  "," : "--..--",
+    "!" : "-.-.--", "'" : ".----."
+}
 
 def is_silent(snd_data):
     "Returns 'True' if below the 'silent' threshold"
@@ -80,59 +82,61 @@ def normalize(snd_data):
         r.append(int(i*times))
     return r
 
-def encode(list1):
+def encode(list):
 
-    list1=list1.split("0")
+    list=list.split("0")
     listascii=""
     counter=0
 
-    # print(list1);
-    for i in range(len(list1)):
-        if len(list1[i])==0: #blank character adds 1
+    for i in range(len(list)):
+        if len(list[i])==0: #blank character adds 1
             counter+=1
         else:
             if counter < ALLOWANCE:
-                list1[i] += list1[i-counter-1]
-                list1[i-counter-1] = ""
+                list[i] += list[i-counter-1]
+                list[i-counter-1] = ""
             counter=0
-    # print(list1);
 
-    for i in range(len(list1)):
-        # print(len(list1[i]), dit_length_min, dit_length_max)
-        if len(list1[i]) >= dit_length_min and len(list1[i]) < dit_length_max:
+    for i in range(len(list)):
+        # print(len(list[i]), dit_length_min, dit_length_max)
+        if len(list[i]) >= dit_length_min and len(list[i]) < dit_length_max:
             listascii+="."
             counter=0
-        elif len(list1[i]) >= dah_length_min and len(list1[i]) < dah_length_max:
+        elif len(list[i]) >= dah_length_min and len(list[i]) < dah_length_max:
             listascii+="-"
             counter=0
-        elif len(list1[i])==0: #blank character adds 1
+        elif len(list[i])==0: #blank character adds 1
             counter+=1
-            if counter >= letter_space_length_min and counter < letter_space_length_max and i < len(list1)-1 and len(list1[i+1]) != 0:
+            if counter >= letter_space_length_min and counter < letter_space_length_max and i < len(list)-1 and len(list[i+1]) != 0:
                 listascii+=" "
                 counter=0
             elif counter >= word_space_length_min:
                 listascii+="  "
                 counter=0
 
-    # print(listascii)
     listascii=listascii.split(" ")
 
     stringout=""
 
-    # print(listascii)
     for i in range(1, len(listascii)):
         if listascii[i]=="":
             stringout+=" "
         else:
+            letter_found = False
             for letter,morse in letter_to_morse.items():
                 if listascii[i]==morse:
                     stringout+=letter
+                    letter_found = True
+            if not letter_found:
+                stringout+="_"
 
 
     if(stringout == "  "):
         print("/")
     print(stringout, end='', flush=True)
 
+    print(list)
+    print(listascii)
     #print("record start")
     #record()
 
@@ -146,11 +150,11 @@ def record():
 
     p = pyaudio.PyAudio()
     stream = p.open(format=FORMAT,
-			channels=1,
-			rate=RATE,
-        		input=True,
-			input_device_index=2,
-			frames_per_buffer=chunk)
+            channels=1,
+            rate=RATE,
+                input=True,
+            input_device_index=2,
+            frames_per_buffer=chunk)
 
 
     #r = array('h')
@@ -188,21 +192,13 @@ def record():
         # print(thefreq)
 
         if thefreq > (FREQ-HzVARIANCE) and thefreq < (FREQ+HzVARIANCE):
-            status = 1
-            # print("1")
-        else:
-            status = 0
-            # print("0")
-
-        if status == 1:
             timelist+="1"
             num_silent = 0
-
         else:
             timelist+="0"
             num_silent += 1
 
-        # print(timelist)
+        print(timelist)
         # print(num_silent)
 
         if num_silent > WINDOW and "1" in timelist:
