@@ -9,16 +9,46 @@ import wave
 import struct
 import numpy as np
 
-THRESHOLD = 300
-chunk=480
-FORMAT = pyaudio.paInt16
-RATE = 48000
-window = np.blackman(chunk)
+WPS = 20
+WPS_VARIANCE = 20 #  10 persents
 FREQ = 650
 HzVARIANCE = 20
-ALLOWANCE = 3
-WINDOW = 160
+THRESHOLD = 300
 
+RATE = 48000  # frames per a second
+CHUNK_LENGTH_MS = 10  
+FORMAT = pyaudio.paInt16
+ALLOWANCE = 3
+
+chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
+window = np.blackman(chunk)
+
+# morse code timing
+dit_length_ms = int(1200 / WPS)
+dah_length_ms = dit_length_ms * 3
+char_space_length_ms = dit_length_ms
+letter_space_length_ms = dit_length_ms * 3
+word_space_length_ms = dit_length_ms * 7
+
+# morse code timing variances in frames
+dit_length_min = int(dit_length_ms * ((100 - WPS_VARIANCE) / 100) / CHUNK_LENGTH_MS)
+dit_length_max = int(dit_length_ms * ((100 + WPS_VARIANCE) / 100) / CHUNK_LENGTH_MS)
+dah_length_min = dit_length_min * 3
+dah_length_max = dit_length_max * 3
+char_space_length_min = dit_length_min
+char_space_length_max = dit_length_max
+letter_space_length_min = dit_length_min * 3
+letter_space_length_max = dit_length_max * 3
+word_space_length_min = dit_length_min * 7
+word_space_length_max = dit_length_max * 7
+
+print(dit_length_ms, dit_length_min, dit_length_max)
+print(dah_length_ms, dah_length_min, dah_length_max)
+print(char_space_length_min, char_space_length_max)
+print(letter_space_length_min, letter_space_length_max)
+print(word_space_length_min, word_space_length_max)
+
+WINDOW = word_space_length_min
 
 letter_to_morse = {
 	"a" : ".-",	"b" : "-...",	"c" : "-.-.",
@@ -53,43 +83,42 @@ def normalize(snd_data):
 def encode(list1):
     
     list1=list1.split("0")
-    #print(list1);
     listascii=""
     counter=0
-
 
     for i in range(len(list1)):
         if len(list1[i])==0: #blank character adds 1
             counter+=1
         else:
-            if counter<ALLOWANCE:
-                list1[i]+=list1[i-counter-1]
-                list1[i-counter-1]=""
+            if counter < ALLOWANCE:
+                list1[i] += list1[i-counter-1]
+                list1[i-counter-1] = ""
             counter=0
-    
-    #print(list1)
-    
+    # print(list1); 
+
     for i in range(len(list1)):
-        if len(list1[i])>=10 and len(list1[i])<20:#200-490 ms dah, throws values >50
-            listascii+="-"
-            counter=0
-        elif len(list1[i])<10 and len(list1[i])>5: #50-190ms is dit
+        # print(len(list1[i]), dit_length_min, dit_length_max)
+        if dit_length_min <= len(list1[i]) < dit_length_max:
             listascii+="."
+            counter=0
+        elif dah_length_min <= len(list1[i]) < dah_length_max:
+            listascii+="-"
             counter=0
         elif len(list1[i])==0: #blank character adds 1
             counter+=1
-            if 40<counter<50 and len(list1[i+1])!=0: #370 ms blanks is letter space
+            if char_space_length_min < counter < char_space_length_max and i < (len(list1) - 1) and len(list1[i+1]) != 0: 
+                #listascii+=""
+                counter=0
+            elif counter >= word_space_length_min:
                 listascii+=" "
                 counter=0
-            elif counter==80: #80 ms blanks is word space
-                listascii+="  "
-                counter=0
                 
-    listascii=listascii.split(" ")
     #print(listascii)
+    listascii=listascii.split(" ")
 
     stringout=""
-    
+   
+    print(listascii)
     for i in range(len(listascii)):
         for letter,morse in letter_to_morse.items():
             if listascii[i]==morse:
@@ -98,7 +127,7 @@ def encode(list1):
             stringout+=" "
 
     if(stringout!= " "):
-        print(stringout)
+        print(stringout, end = '')
     
     #print("record start")
     #record()
@@ -169,6 +198,9 @@ def record():
             timelist+="0"
             num_silent += 1
             
+        # print(timelist)
+        # print(num_silent)
+
         if num_silent > WINDOW and "1" in timelist:
             #print(timelist)
             #print("\n")
@@ -183,7 +215,7 @@ def record():
         
     #print (timelist)
     print("ended")
-    print(num_silent)
+    # print(num_silent)
     p.terminate()
 
 record()
