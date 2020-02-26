@@ -16,7 +16,7 @@ HzVARIANCE = 20
 THRESHOLD = 300
 
 RATE = 48000  # frames per a second
-CHUNK_LENGTH_MS = 10  
+CHUNK_LENGTH_MS = 10
 FORMAT = pyaudio.paInt16
 ALLOWANCE = 3
 
@@ -48,7 +48,7 @@ print(char_space_length_min, char_space_length_max)
 print(letter_space_length_min, letter_space_length_max)
 print(word_space_length_min, word_space_length_max)
 
-WINDOW = word_space_length_min
+WINDOW = letter_space_length_min
 
 letter_to_morse = {
 	"a" : ".-",	"b" : "-...",	"c" : "-.-.",
@@ -62,7 +62,7 @@ letter_to_morse = {
 	"y" : "-.--",	"z" : "--..",	"1" : ".----",
 	"2" : "..---",	"3" : "...--",	"4" : "....-",
 	"5" : ".....", 	"6" : "-....",	"7" : "--...",
-	"8" : "---..",	"9" : "----.",	"0" : "-----",	
+	"8" : "---..",	"9" : "----.",	"0" : "-----",
 	" " : "/"}
 
 def is_silent(snd_data):
@@ -81,11 +81,12 @@ def normalize(snd_data):
     return r
 
 def encode(list1):
-    
+
     list1=list1.split("0")
     listascii=""
     counter=0
 
+    # print(list1);
     for i in range(len(list1)):
         if len(list1[i])==0: #blank character adds 1
             counter+=1
@@ -94,44 +95,47 @@ def encode(list1):
                 list1[i] += list1[i-counter-1]
                 list1[i-counter-1] = ""
             counter=0
-    # print(list1); 
+    # print(list1);
 
     for i in range(len(list1)):
         # print(len(list1[i]), dit_length_min, dit_length_max)
-        if dit_length_min <= len(list1[i]) < dit_length_max:
+        if len(list1[i]) >= dit_length_min and len(list1[i]) < dit_length_max:
             listascii+="."
             counter=0
-        elif dah_length_min <= len(list1[i]) < dah_length_max:
+        elif len(list1[i]) >= dah_length_min and len(list1[i]) < dah_length_max:
             listascii+="-"
             counter=0
         elif len(list1[i])==0: #blank character adds 1
             counter+=1
-            if char_space_length_min < counter < char_space_length_max and i < (len(list1) - 1) and len(list1[i+1]) != 0: 
-                #listascii+=""
-                counter=0
-            elif counter >= word_space_length_min:
+            if counter >= letter_space_length_min and counter < letter_space_length_max and i < len(list1)-1 and len(list1[i+1]) != 0:
                 listascii+=" "
                 counter=0
-                
-    #print(listascii)
+            elif counter >= word_space_length_min:
+                listascii+="  "
+                counter=0
+
+    # print(listascii)
     listascii=listascii.split(" ")
 
     stringout=""
-   
-    print(listascii)
-    for i in range(len(listascii)):
-        for letter,morse in letter_to_morse.items():
-            if listascii[i]==morse:
-                stringout+=letter
+
+    # print(listascii)
+    for i in range(1, len(listascii)):
         if listascii[i]=="":
             stringout+=" "
+        else:
+            for letter,morse in letter_to_morse.items():
+                if listascii[i]==morse:
+                    stringout+=letter
 
-    if(stringout!= " "):
-        print(stringout, end = '')
-    
+
+    if(stringout == "  "):
+        print("/")
+    print(stringout, end='', flush=True)
+
     #print("record start")
     #record()
-    
+
 def record():
     num_silent = 0
     snd_started = False
@@ -141,18 +145,18 @@ def record():
     timelist = ""
 
     p = pyaudio.PyAudio()
-    stream = p.open(format=FORMAT, 
-			channels=1, 
+    stream = p.open(format=FORMAT,
+			channels=1,
 			rate=RATE,
-        		input=True, 
-			input_device_index=2, 
+        		input=True,
+			input_device_index=2,
 			frames_per_buffer=chunk)
 
 
     #r = array('h')
     print("started")
     while True:
-        
+
 
         snd_data = stream.read(chunk, exception_on_overflow = False)
 
@@ -171,7 +175,7 @@ def record():
         # find the maximum
         which = fftData[1:].argmax() + 1
         silent = is_silent(indata)
-        
+
         if silent:
             thefreq = 0
         elif which != len(fftData)-1:
@@ -182,22 +186,22 @@ def record():
         else:
             thefreq = which*RATE/chunk
         # print(thefreq)
-        
+
         if thefreq > (FREQ-HzVARIANCE) and thefreq < (FREQ+HzVARIANCE):
             status = 1
             # print("1")
         else:
             status = 0
             # print("0")
-            
+
         if status == 1:
             timelist+="1"
             num_silent = 0
-            
+
         else:
             timelist+="0"
             num_silent += 1
-            
+
         # print(timelist)
         # print(num_silent)
 
@@ -212,7 +216,7 @@ def record():
         if num_silent > 1000:
             print("reset")
             num_silent =0
-        
+
     #print (timelist)
     print("ended")
     # print(num_silent)
