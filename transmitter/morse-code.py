@@ -4,8 +4,7 @@ import time
 import gpiozero as gpio
 import _thread as thread
 from array import array
-from pygame.locals import *
-from morse_lookup import *
+from transmitter.morse_lookup import *
 
 pygame.mixer.pre_init(44100, -16, 1, 1024)
 pygame.init()

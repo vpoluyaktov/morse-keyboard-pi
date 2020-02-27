@@ -10,7 +10,7 @@ try:
     import pyaudio
     import wave
     import struct
-    import numpy as np
+    import numpy
 
 except ImportError as error:
     print("You have to install some extras in order to use this shell script:")
@@ -31,7 +31,7 @@ FORMAT = pyaudio.paInt16
 ALLOWANCE = 3
 
 chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
-window = np.blackman(chunk)
+window = numpy.blackman(chunk)
 
 # morse code timing
 dit_length_ms = int(1200 / WPS)
@@ -126,10 +126,10 @@ def record():
         sample_width = p.get_sample_size(FORMAT)
 
         # find frequency of each chunk
-        indata = np.array(wave.struct.unpack("%dh" % (chunk), snd_data)) * window
+        indata = numpy.array(wave.struct.unpack("%dh" % (chunk), snd_data)) * window
 
         # take fft and square each value
-        fftData = abs(np.fft.rfft(indata)) ** 2
+        fftData = abs(numpy.fft.rfft(indata)) ** 2
 
         # find the maximum
         which = fftData[1:].argmax() + 1
@@ -138,7 +138,7 @@ def record():
         if silent:
             thefreq = 0
         elif which != len(fftData) - 1:
-            y0, y1, y2 = np.log(fftData[which - 1:which + 2:])
+            y0, y1, y2 = numpy.log(fftData[which - 1:which + 2:])
             x1 = (y2 - y0) * .5 / (2 * y1 - y2 - y0)
             # find the frequency and output it
             thefreq = (which + x1) * RATE / chunk
