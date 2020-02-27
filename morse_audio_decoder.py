@@ -1,22 +1,32 @@
 #!/usr/bin/python3
 
-from sys import byteorder
-from array import array
-from struct import pack
+try:
+    import pyaudio
 
-import pyaudio
-import wave
-import struct
-import numpy as np
+    from sys import byteorder
+    from array import array
+    from struct import pack
+
+    import pyaudio
+    import wave
+    import struct
+    import numpy as np
+
+except ImportError as error:
+    print("You have to install some extras in order to use this shell script:")
+    print(error)
+    exit(1)
+
+DEVICE_INDEX = 4
 
 WPS = 20
-WPS_VARIANCE = 20 #  10 persents
+WPS_VARIANCE = 20  # 10 persents
 FREQ = 650
-HzVARIANCE = 25
-THRESHOLD = 400
+HzVARIANCE = 20
+THRESHOLD = 300
 
 RATE = 48000  # frames per a second
-CHUNK_LENGTH_MS = 10
+CHUNK_LENGTH_MS = 5
 FORMAT = pyaudio.paInt16
 ALLOWANCE = 3
 
@@ -48,39 +58,49 @@ print("char: ", char_space_length_min, "-", char_space_length_max)
 print("letter: ", letter_space_length_min, "-", letter_space_length_max)
 print("word: ", word_space_length_min, "-", word_space_length_max)
 
-WINDOW = letter_space_length_min # process letter by letter
+WINDOW = letter_space_length_min  # process letter by letter
 
-letter_to_morse = {
-    "A" : ".-",     "B" : "-...",    "C" : "-.-.",
-    "D" : "-..",    "E" : ".",       "F" : "..-.",
-    "G" : "--.",    "H" : "....",    "I" : "..",
-    "J" : ".---",   "K" : "-.-",     "L" : ".-..",
-    "M" : "--",     "N" : "-.",      "O" : "---",
-    "P" : ".--.",   "Q" : "--.-",    "R" : ".-.",
-    "S" : "...",    "T" : "-",       "U" : "..-",
-    "V" : "...-",   "W" : ".--",     "X" : "-..-",
-    "Y" : "-.--",   "Z" : "--..",    "1" : ".----",
-    "2" : "..---",  "3" : "...--",   "4" : "....-",
-    "5" : ".....",  "6" : "-....",   "7" : "--...",
-    "8" : "---..",  "9" : "----.",   "0" : "-----",
-    "?" : "..--..", "." : ".-.-.-",  "," : "--..--",
-    "!" : "-.-.--", "'" : ".----."
-}
+letter_to_morse = {"A": ".-", "B": "-...", "C": "-.-.", "D": "-..", "E": ".", "F": "..-.", "G": "--.", "H": "....",
+    "I": "..", "J": ".---", "K": "-.-", "L": ".-..", "M": "--", "N": "-.", "O": "---", "P": ".--.", "Q": "--.-",
+    "R": ".-.", "S": "...", "T": "-", "U": "..-", "V": "...-", "W": ".--", "X": "-..-", "Y": "-.--", "Z": "--..",
+    "1": ".----", "2": "..---", "3": "...--", "4": "....-", "5": ".....", "6": "-....", "7": "--...", "8": "---..",
+    "9": "----.", "0": "-----", "?": "..--..", ".": ".-.-.-", ",": "--..--", "!": "-.-.--", "'": ".----."}
+
+
+def list_devices():
+    """List all available microphone devices."""
+
+    print("List of all available microphone devices:")
+    pa = pyaudio.PyAudio()
+    for i in range(pa.get_device_count()):
+        dev = pa.get_device_info_by_index(i)
+        input_chn = dev.get('maxInputChannels', 0)
+        if input_chn > 0:
+            name = dev.get('name')
+            rate = dev.get('defaultSampleRate')
+            print("Index {i}: {name} (Max Channels {input_chn}, Default @ {rate} Hz)".format(
+                i=i, name=name, input_chn=input_chn, rate=int(rate)
+
+            ))
+    return 0
+
 
 def is_silent(snd_data):
     "Returns 'True' if below the 'silent' threshold"
     return max(snd_data) < THRESHOLD
 
+
 def normalize(snd_data):
     "Average the volume out"
-    #32768 maximum /2
+    # 32768 maximum /2
     MAXIMUM = 16384
-    times = float(MAXIMUM)/max(abs(i) for i in snd_data)
+    times = float(MAXIMUM) / max(abs(i) for i in snd_data)
 
     r = array('h')
     for i in snd_data:
-        r.append(int(i*times))
+        r.append(int(i * times))
     return r
+
 
 def record():
     sound_started = False
@@ -88,33 +108,28 @@ def record():
     num_silent = 0
     sound_sequence = ""
 
+    print("Listening device #", DEVICE_INDEX)
     p = pyaudio.PyAudio()
-    stream = p.open(format=FORMAT,
-            channels=1,
-            rate=RATE,
-                input=True,
-            input_device_index=2,
-            frames_per_buffer=chunk)
+    stream = p.open(format = FORMAT, channels = 1, rate = RATE, input = True, input_device_index = DEVICE_INDEX,
+                    frames_per_buffer = chunk)
 
-
-    #r = array('h')
+    # r = array('h')
     print("started")
     while True:
-
 
         snd_data = stream.read(chunk, exception_on_overflow = False)
 
         if byteorder == 'big':
             snd_data.byteswap()
 
-        #r.extend(snd_data)
+        # r.extend(snd_data)
         sample_width = p.get_sample_size(FORMAT)
 
-        #find frequency of each chunk
-        indata = np.array(wave.struct.unpack("%dh"%(chunk), snd_data))*window
+        # find frequency of each chunk
+        indata = np.array(wave.struct.unpack("%dh" % (chunk), snd_data)) * window
 
-        #take fft and square each value
-        fftData = abs(np.fft.rfft(indata))**2
+        # take fft and square each value
+        fftData = abs(np.fft.rfft(indata)) ** 2
 
         # find the maximum
         which = fftData[1:].argmax() + 1
@@ -122,16 +137,16 @@ def record():
 
         if silent:
             thefreq = 0
-        elif which != len(fftData)-1:
-            y0,y1,y2 = np.log(fftData[which-1:which+2:])
+        elif which != len(fftData) - 1:
+            y0, y1, y2 = np.log(fftData[which - 1:which + 2:])
             x1 = (y2 - y0) * .5 / (2 * y1 - y2 - y0)
             # find the frequency and output it
-            thefreq = (which+x1)*RATE/chunk
+            thefreq = (which + x1) * RATE / chunk
         else:
-            thefreq = which*RATE/chunk
+            thefreq = which * RATE / chunk
         # print(thefreq)
 
-        if thefreq > (FREQ-HzVARIANCE) and thefreq < (FREQ+HzVARIANCE):
+        if thefreq > (FREQ - HzVARIANCE) and thefreq < (FREQ + HzVARIANCE):
             # check if this is a new character started
             if num_silent >= letter_space_length_min and sound_started and syncronized:
                 decode(sound_sequence)
@@ -161,55 +176,57 @@ def record():
     print("ended")
     p.terminate()
 
-def decode(list):
 
+def decode(list):
     # print(list)
 
-    list=list.split("0")
-    listascii=""
-    counter=0
+    list = list.split("0")
+    listascii = ""
+    counter = 0
 
     for i in range(len(list)):
-        if len(list[i])==0: #blank character adds 1
-            counter+=1
+        if len(list[i]) == 0:  # blank character adds 1
+            counter += 1
         else:
             if counter < ALLOWANCE:
-                list[i] += list[i-counter-1]
-                list[i-counter-1] = ""
-            counter=0
+                list[i] += list[i - counter - 1]
+                list[i - counter - 1] = ""
+            counter = 0
 
     for i in range(len(list)):
         # print(len(list[i]), dit_length_min, dit_length_max)
-        if len(list[i]) >= dit_length_min and len(list[i]) < dit_length_max:
-            listascii+="."
-            counter=0
-        elif len(list[i]) >= dah_length_min and len(list[i]) < dah_length_max:
-            listascii+="-"
-            counter=0
-        elif len(list[i])==0: #blank character adds 1
-            counter+=1
+        if len(list[i]) >= dit_length_min and len(list[i]) <= dit_length_max:
+            listascii += "."
+            counter = 0
+        elif len(list[i]) >= dah_length_min and len(list[i]) <= dah_length_max:
+            listascii += "-"
+            counter = 0
+        elif len(list[i]) == 0:  # blank character adds 1
+            counter += 1
             if counter >= word_space_length_min:
-                listascii+=" "
-                counter=0
+                listascii += " "
+                counter = 0
 
-    listascii=listascii.split(" ")
-    stringout=""
+    listascii = listascii.split(" ")
+    stringout = ""
     for i in range(len(listascii)):
-        if listascii[i]=="":
-            stringout+=" "
+        if listascii[i] == "":
+            stringout += " "
         else:
             letter_found = False
-            for letter,morse in letter_to_morse.items():
-                if listascii[i]==morse:
-                    stringout+=letter
+            for letter, morse in letter_to_morse.items():
+                if listascii[i] == morse:
+                    stringout += letter
                     letter_found = True
             if not letter_found:
-                stringout+="_"
+                stringout += "_"
 
-    print(stringout, end='', flush=True)
+    print(stringout, end = '', flush = True)
+
 
 #    print(list)
 #    print(listascii)
 
-
-record()
+if __name__ == "__main__":
+    list_devices()
+    record()
