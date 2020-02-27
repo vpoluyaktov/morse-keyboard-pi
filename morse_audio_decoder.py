@@ -150,7 +150,7 @@ def record():
             # waiting for long selence so don't break a word
             num_silent += 1
 
-        if num_silent >= word_space_length_max and sound_started:
+        if num_silent >= word_space_length_min and sound_started:
             if sound_started and syncronized:
                 decode(sound_sequence)
             num_silent = 0
