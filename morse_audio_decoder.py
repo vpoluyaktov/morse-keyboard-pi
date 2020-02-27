@@ -17,7 +17,7 @@ except ImportError as error:
     print(error)
     exit(1)
 
-DEVICE_INDEX = 4
+DEVICE_INDEX = 2
 
 WPS = 20
 WPS_VARIANCE = 20  # 10 persents
