@@ -12,8 +12,8 @@ import numpy as np
 WPS = 20
 WPS_VARIANCE = 20 #  10 persents
 FREQ = 650
-HzVARIANCE = 20
-THRESHOLD = 300
+HzVARIANCE = 25
+THRESHOLD = 400
 
 RATE = 48000  # frames per a second
 CHUNK_LENGTH_MS = 10
@@ -48,7 +48,7 @@ print("char: ", char_space_length_min, "-", char_space_length_max)
 print("letter: ", letter_space_length_min, "-", letter_space_length_max)
 print("word: ", word_space_length_min, "-", word_space_length_max)
 
-WINDOW = letter_space_length_min
+WINDOW = letter_space_length_min # process letter by letter
 
 letter_to_morse = {
     "A" : ".-",     "B" : "-...",    "C" : "-.-.",
@@ -82,71 +82,11 @@ def normalize(snd_data):
         r.append(int(i*times))
     return r
 
-def encode(list):
-
-    list=list.split("0")
-    listascii=""
-    counter=0
-
-    for i in range(len(list)):
-        if len(list[i])==0: #blank character adds 1
-            counter+=1
-        else:
-            if counter < ALLOWANCE:
-                list[i] += list[i-counter-1]
-                list[i-counter-1] = ""
-            counter=0
-
-    for i in range(len(list)):
-        # print(len(list[i]), dit_length_min, dit_length_max)
-        if len(list[i]) >= dit_length_min and len(list[i]) < dit_length_max:
-            listascii+="."
-            counter=0
-        elif len(list[i]) >= dah_length_min and len(list[i]) < dah_length_max:
-            listascii+="-"
-            counter=0
-        elif len(list[i])==0: #blank character adds 1
-            counter+=1
-            if counter >= letter_space_length_min and counter < letter_space_length_max and i < len(list)-1 and len(list[i+1]) != 0:
-                listascii+=" "
-                counter=0
-            elif counter >= word_space_length_min:
-                listascii+="  "
-                counter=0
-
-    listascii=listascii.split(" ")
-
-    stringout=""
-
-    for i in range(1, len(listascii)):
-        if listascii[i]=="":
-            stringout+=" "
-        else:
-            letter_found = False
-            for letter,morse in letter_to_morse.items():
-                if listascii[i]==morse:
-                    stringout+=letter
-                    letter_found = True
-            if not letter_found:
-                stringout+="_"
-
-
-    if(stringout == "  "):
-        print("/")
-    print(stringout, end='', flush=True)
-
-    print(list)
-    print(listascii)
-    #print("record start")
-    #record()
-
 def record():
+    sound_started = False
+    syncronized = False
     num_silent = 0
-    snd_started = False
-    oncount = 0
-    offcount = 0
-    status = 0
-    timelist = ""
+    sound_sequence = ""
 
     p = pyaudio.PyAudio()
     stream = p.open(format=FORMAT,
@@ -192,30 +132,84 @@ def record():
         # print(thefreq)
 
         if thefreq > (FREQ-HzVARIANCE) and thefreq < (FREQ+HzVARIANCE):
-            timelist+="1"
+            # check if this is a new character started
+            if num_silent >= letter_space_length_min and sound_started and syncronized:
+                decode(sound_sequence)
+                num_silent = 0
+                sound_sequence = ""
+
+            if syncronized:
+                sound_sequence += "1"
             num_silent = 0
+            sound_started = True
+        elif sound_started:
+            num_silent += 1
+            if syncronized:
+                sound_sequence += "0"
         else:
-            timelist+="0"
+            # waiting for long selence so don't break a word
             num_silent += 1
 
-        print(timelist)
-        # print(num_silent)
+        if num_silent >= word_space_length_max and sound_started:
+            if sound_started and syncronized:
+                decode(sound_sequence)
+            num_silent = 0
+            sound_sequence = ""
+            sound_started = False
+            syncronized = True
 
-        if num_silent > WINDOW and "1" in timelist:
-            #print(timelist)
-            #print("\n")
-            #stream.stop_stream()
-            #stream.close()
-            encode(timelist)
-            timelist=""
-
-        if num_silent > 1000:
-            print("reset")
-            num_silent =0
-
-    #print (timelist)
     print("ended")
-    # print(num_silent)
     p.terminate()
+
+def decode(list):
+
+    # print(list)
+
+    list=list.split("0")
+    listascii=""
+    counter=0
+
+    for i in range(len(list)):
+        if len(list[i])==0: #blank character adds 1
+            counter+=1
+        else:
+            if counter < ALLOWANCE:
+                list[i] += list[i-counter-1]
+                list[i-counter-1] = ""
+            counter=0
+
+    for i in range(len(list)):
+        # print(len(list[i]), dit_length_min, dit_length_max)
+        if len(list[i]) >= dit_length_min and len(list[i]) < dit_length_max:
+            listascii+="."
+            counter=0
+        elif len(list[i]) >= dah_length_min and len(list[i]) < dah_length_max:
+            listascii+="-"
+            counter=0
+        elif len(list[i])==0: #blank character adds 1
+            counter+=1
+            if counter >= word_space_length_min:
+                listascii+=" "
+                counter=0
+
+    listascii=listascii.split(" ")
+    stringout=""
+    for i in range(len(listascii)):
+        if listascii[i]=="":
+            stringout+=" "
+        else:
+            letter_found = False
+            for letter,morse in letter_to_morse.items():
+                if listascii[i]==morse:
+                    stringout+=letter
+                    letter_found = True
+            if not letter_found:
+                stringout+="_"
+
+    print(stringout, end='', flush=True)
+
+#    print(list)
+#    print(listascii)
+
 
 record()
