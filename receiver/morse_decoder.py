@@ -181,6 +181,7 @@ def decode(list):
     # print(list)
 
     line_breakers = ".?!"
+    last_character = ""
 
     list = list.split("0")
     listascii = ""
@@ -217,14 +218,14 @@ def decode(list):
               stringout += " "  # drop space in the beginning of a line
         else:
             letter_found = False
-            last_character = None
             for letter, morse in letter_to_morse.items():
                 if listascii[i] == morse:
                     stringout += letter
                     last_character = letter
                     letter_found = True
             if not letter_found:
-                stringout += "_"
+                last_character = "_"
+                stringout += last_character
             if last_character in line_breakers:
                 stringout += "\n"
 
