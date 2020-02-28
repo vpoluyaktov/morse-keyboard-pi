@@ -180,6 +180,8 @@ def record():
 def decode(list):
     # print(list)
 
+    line_breakers = ".?!"
+
     list = list.split("0")
     listascii = ""
     counter = 0
@@ -211,7 +213,7 @@ def decode(list):
     stringout = ""
     for i in range(len(listascii)):
         if listascii[i] == "":
-            if not last_character in ".?!":
+            if not last_character in line_breakers:
               stringout += " "  # drop space in the beginning of a line
         else:
             letter_found = False
@@ -223,7 +225,7 @@ def decode(list):
                     letter_found = True
             if not letter_found:
                 stringout += "_"
-            if last_character in ".?!":
+            if last_character in line_breakers:
                 stringout += "\n"
 
     print(stringout, end = '', flush = True)
