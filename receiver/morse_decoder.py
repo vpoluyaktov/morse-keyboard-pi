@@ -211,15 +211,20 @@ def decode(list):
     stringout = ""
     for i in range(len(listascii)):
         if listascii[i] == "":
-            stringout += " "
+            if not last_character in ".?!":
+              stringout += " "  # drop space in the beginning of a line
         else:
             letter_found = False
+            last_character = None
             for letter, morse in letter_to_morse.items():
                 if listascii[i] == morse:
                     stringout += letter
+                    last_character = letter
                     letter_found = True
             if not letter_found:
                 stringout += "_"
+            if last_character in ".?!":
+                stringout += "\n"
 
     print(stringout, end = '', flush = True)
 
