@@ -26,27 +26,24 @@ from UI.themes.BlueTheme import BlueTheme
 from UI.MainForm import MainForm
 
 
-class App(npyscreen.NPSApp):
+class App(npyscreen.NPSAppManaged):
 
     # def onStart(self):
     #    self.add(npyscreen.TitleText, name = "Text:", value= "Hellow World!" ) 
 
     mainForm = None
 
-    def _get_theme(self):
-        return BlueTheme
-
-    def draw(self):
-
-        mainForm = self.WindowForm(parentApp=self)
-        mainForm.add(npyscreen.BoxTitle, "Test" )
-        mainForm.edit()
+    def onStart(self):
+        #npyscreen.setTheme(BlueTheme)
+        self.keypress_timeout_default = 1
+        self.mainForm = self.addForm("MAIN", MainForm)
+        self.mainForm.edit()
 
     def while_waiting(self):
 
         currentDT = datetime.datetime.now()
-        str(currentDT)
-        self.mainForm.receiverBox.values = ["Time: ", str(currentDT)]
+        self.mainForm.receiverBox.entry_widget.buffer([str(currentDT)], scroll_end=True, scroll_if_editing=False)
+        self.mainForm.receiverBox.entry_widget.display()
 
 
 if __name__ == "__main__":
