@@ -14,14 +14,17 @@ class MainForm(npyscreen.FormWithMenus):
 
         self.receiverBox = self.add(ReceiverPager, name = "Receiver", footer = "Received text", relx = 30,
                                     rely = 1, height = 5, max_width = 100, max_height = 10, scroll_exit = False,
-                                    contained_widget_arguments = {"maxlen" : 10}
+                                    contained_widget_arguments = {"maxlen" : 4}
         )
 
 
         self.senderBox = self.add(npyscreen.BoxTitle, name = "Send", relx = 30, height = 5, max_height = 10,
                                   scroll_exit = False)
 
-        self.receiverBox.entry_widget.buffer(["Hello"], scroll_end=True, scroll_if_editing=False)
+        self.receiverBox.entry_widget.buffer(["Decoder started",""], scroll_end=True, scroll_if_editing=False)
+
+        self.receiverStarButton = self.add(npyscreen.ButtonPress, name = "Start", relx = 150, rely =2)
+
 
     def afterEditing(self):
         self.parentApp.setNextForm(None)
@@ -29,3 +32,4 @@ class MainForm(npyscreen.FormWithMenus):
     def while_waiting(self):
         start_display_at = len(self.receiverBox.values) - self.receiverBox.height
         #self.receiverBox.entry_widget.start_display_at = start_display_at
+

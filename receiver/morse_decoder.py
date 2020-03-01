@@ -144,7 +144,7 @@ def record():
             thefreq = (which + x1) * RATE / chunk
         else:
             thefreq = which * RATE / chunk
-        # print(thefreq)
+        #print(thefreq)
 
         if thefreq > (FREQ - HzVARIANCE) and thefreq < (FREQ + HzVARIANCE):
             # check if this is a new character started
