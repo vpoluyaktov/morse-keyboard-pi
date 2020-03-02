@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 
 try:
-    import pyaudio
 
+    from os import environ
     from sys import byteorder
     from array import array
     from struct import pack
+    from collections import Counter
 
     import pyaudio
     import wave
@@ -19,17 +20,15 @@ except ImportError as error:
 
 
 class MorseDecoder:
+    output_buffer = ""
 
-
-    outputBuffer = ""
-
-    DEVICE_INDEX = 2
+    DEVICE_INDEX = 3
 
     WPS = 20
     WPS_VARIANCE = 20  # 10 persents
     FREQ = 650
     HzVARIANCE = 20
-    THRESHOLD = 300
+    THRESHOLD = 2
 
     RATE = 48000  # frames per a second
     CHUNK_LENGTH_MS = 5
@@ -38,6 +37,7 @@ class MorseDecoder:
 
     chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
     window = numpy.blackman(chunk)
+    frequency_history = []
 
     # morse code timing
     dit_length_ms = int(1200 / WPS)
@@ -67,16 +67,16 @@ class MorseDecoder:
     WINDOW = letter_space_length_min  # process letter by letter
 
     letter_to_morse = {"A": ".-", "B": "-...", "C": "-.-.", "D": "-..", "E": ".", "F": "..-.", "G": "--.", "H": "....",
-        "I": "..", "J": ".---", "K": "-.-", "L": ".-..", "M": "--", "N": "-.", "O": "---", "P": ".--.", "Q": "--.-",
-        "R": ".-.", "S": "...", "T": "-", "U": "..-", "V": "...-", "W": ".--", "X": "-..-", "Y": "-.--", "Z": "--..",
-        "1": ".----", "2": "..---", "3": "...--", "4": "....-", "5": ".....", "6": "-....", "7": "--...", "8": "---..",
-        "9": "----.", "0": "-----", "?": "..--..", ".": ".-.-.-", ",": "--..--", "!": "-.-.--", "'": ".----."}
+                       "I": "..", "J": ".---", "K": "-.-", "L": ".-..", "M": "--", "N": "-.", "O": "---", "P": ".--.",
+                       "Q": "--.-", "R": ".-.", "S": "...", "T": "-", "U": "..-", "V": "...-", "W": ".--", "X": "-..-",
+                       "Y": "-.--", "Z": "--..", "1": ".----", "2": "..---", "3": "...--", "4": "....-", "5": ".....",
+                       "6": "-....", "7": "--...", "8": "---..", "9": "----.", "0": "-----", "?": "..--..",
+                       ".": ".-.-.-", ",": "--..--", "!": "-.-.--", "'": ".----."}
 
+    def get_devices_list(self):
+        # List all available microphone devices
 
-    def list_devices(self):
-        """List all available microphone devices."""
-
-        print("List of all available microphone devices:")
+        device_list = []
         pa = pyaudio.PyAudio()
         for i in range(pa.get_device_count()):
             dev = pa.get_device_info_by_index(i)
@@ -84,49 +84,58 @@ class MorseDecoder:
             if input_chn > 0:
                 name = dev.get('name')
                 rate = dev.get('defaultSampleRate')
-                print("Index {i}: {name} (Max Channels {input_chn}, Default @ {rate} Hz)".format(
-                    i=i, name=name, input_chn=input_chn, rate=int(rate)
 
-                ))
-        return 0
+                device_list.append([
+                    "Index {i}: {name} (Max Channels {input_chn}, Default @ {rate} Hz)".format(i = i, name = name,
+                        input_chn = input_chn, rate = int(rate))])
 
+        return device_list
 
     def is_silent(self, snd_data):
         "Returns 'True' if below the 'silent' threshold"
         return max(snd_data) < self.THRESHOLD
 
-
-    def normalize(snd_data):
+    def normalize(self, snd_data):
         "Average the volume out"
         # 32768 maximum /2
         MAXIMUM = 16384
         times = float(MAXIMUM) / max(abs(i) for i in snd_data)
 
-        r = array('h')
+        r = ['h']
         for i in snd_data:
             r.append(int(i * times))
-        return r
+        return bytes(r, 'utf-8')
 
-
-    def record(self):
+    def receive(self):
         sound_started = False
         syncronized = False
         num_silent = 0
         sound_sequence = ""
 
-        print("Listening device #", self.DEVICE_INDEX)
+        # print("Listening device #", self.DEVICE_INDEX)
         p = pyaudio.PyAudio()
-        stream = p.open(format = self.FORMAT, channels = 1, rate = self.RATE, input = True, input_device_index = self.DEVICE_INDEX,
-                        frames_per_buffer = self.chunk)
 
-        # r = array('h')
-        print("started")
+        if environ.get('DEBUG'):
+            # unfortunatelly PyCharm still doesn't have an access to Mic on Mac, so I have to emulate it
+            filename = 'morse_test.wav'
+            wav_file = wave.open(filename, 'rb')
+
+        else:
+            stream = p.open(format = self.FORMAT, channels = 1, rate = self.RATE, input = True,
+                            input_device_index = self.DEVICE_INDEX, frames_per_buffer = self.chunk)
+
+
         while True:
 
-            snd_data = stream.read(self.chunk, exception_on_overflow = False)
+            if environ.get('DEBUG'):
+                snd_data = wav_file.readframes(int(self.chunk / 2))
+            else:
+                snd_data = stream.read(self.chunk, exception_on_overflow = False)
 
             if byteorder == 'big':
                 snd_data.byteswap()
+
+            # snd_data = self.normalize(snd_data)
 
             # r.extend(snd_data)
             sample_width = p.get_sample_size(self.FORMAT)
@@ -142,17 +151,23 @@ class MorseDecoder:
             silent = self.is_silent(indata)
 
             if silent:
-                thefreq = 0
+                frequency = 0
             elif which != len(fftData) - 1:
                 y0, y1, y2 = numpy.log(fftData[which - 1:which + 2:])
                 x1 = (y2 - y0) * .5 / (2 * y1 - y2 - y0)
                 # find the frequency and output it
-                thefreq = (which + x1) * self.RATE / self.chunk
+                frequency = (which + x1) * self.RATE / self.chunk
             else:
-                thefreq = which * self.RATE / self.chunk
-            #print(thefreq)
+                frequency = which * self.RATE / self.chunk
 
-            if thefreq > (self.FREQ - self.HzVARIANCE) and thefreq < (self.FREQ + self.HzVARIANCE):
+            # keep last 5 sec of frequency measurements
+            if frequency > 450 and frequency < 900:
+                keep_frequency_sec = 1
+                keep_number_of_chunks = int(1000 / self.CHUNK_LENGTH_MS * keep_frequency_sec)
+                self.frequency_history.append(frequency)
+                self.frequency_history = self.frequency_history[-keep_number_of_chunks:]
+
+            if frequency > (self.FREQ - self.HzVARIANCE) and frequency < (self.FREQ + self.HzVARIANCE):
                 # check if this is a new character started
                 if num_silent >= self.letter_space_length_min and sound_started and syncronized:
                     self.decode(sound_sequence)
@@ -179,9 +194,7 @@ class MorseDecoder:
                 sound_started = False
                 syncronized = True
 
-        print("ended")
         p.terminate()
-
 
     def decode(self, list):
         # print(list)
@@ -221,7 +234,7 @@ class MorseDecoder:
         for i in range(len(listascii)):
             if listascii[i] == "":
                 if not last_character in line_breakers:
-                  stringout += " "  # drop space in the beginning of a line
+                    stringout += " "  # drop space in the beginning of a line
             else:
                 letter_found = False
                 for letter, morse in self.letter_to_morse.items():
@@ -236,15 +249,24 @@ class MorseDecoder:
                     stringout += "\n"
 
         # print(stringout, end = '', flush = True)
-        self.outputBuffer += stringout
-
+        self.output_buffer += stringout
 
     #    print(list)
     #    print(listascii)
 
     def getBuffer(self):
-        buffer = self.outputBuffer
-        self.outputBuffer = ""
+        buffer = self.output_buffer
+        self.output_buffer = ""
 
-        return buffer
-        #return "Test\n"
+        return buffer  # return "Test\n"
+
+    def get_frequency(self):
+
+        most_common_frequency = 0
+
+        if len(self.frequency_history) > 0:
+            histogram = Counter(self.frequency_history)
+            (most_common_frequency, count) = histogram.most_common(1)[0]
+            # self.frequency_history = []
+
+        return most_common_frequency
