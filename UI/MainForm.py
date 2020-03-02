@@ -21,7 +21,7 @@ class MainForm(npyscreen.FormWithMenus):
         self.senderBox = self.add(npyscreen.BoxTitle, name = "Send", relx = 30, height = 5, max_height = 10,
                                   scroll_exit = False)
 
-        self.receiverBox.entry_widget.buffer(["Decoder started",""], scroll_end=True, scroll_if_editing=False)
+        self.receiverBox.entry_widget.buffer([], scroll_end=True, scroll_if_editing=False)
 
         self.receiverStarButton = self.add(npyscreen.ButtonPress, name = "Start", relx = 150, rely =2)
 

@@ -246,5 +246,5 @@ class MorseDecoder:
         buffer = self.outputBuffer
         self.outputBuffer = ""
 
-        #return buffer
-        return "Test "
+        return buffer
+        #return "Test\n"
