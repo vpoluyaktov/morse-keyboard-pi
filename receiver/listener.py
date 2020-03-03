@@ -7,6 +7,7 @@ try:
     from array import array
     from struct import pack
     from collections import Counter
+    from queue import Queue
 
     import pyaudio
     import wave
@@ -49,6 +50,7 @@ class MorseListener:
         return device_list
 
     def listen(self, morse_decoder_queue):
+
         p = pyaudio.PyAudio()
 
         stream = p.open(format = self.FORMAT, channels = 1, rate = self.RATE, input = True,
@@ -57,7 +59,4 @@ class MorseListener:
         while True:
             sound_data = stream.read(self.chunk, exception_on_overflow = False)
             morse_decoder_queue.put(sound_data)
-            yield
-
-
 

@@ -94,8 +94,8 @@ class MorseDecoder:
         while True:
 
             sound_data = morse_decoder_queue.get()
+
             if sound_data is None:
-                yield
                 break
 
             if byteorder == 'big':
@@ -134,7 +134,7 @@ class MorseDecoder:
             if frequency > (self.FREQ - self.HzVARIANCE) and frequency < (self.FREQ + self.HzVARIANCE):
                 # check if this is a new character started
                 if num_silent >= self.letter_space_length_min and sound_started and syncronized:
-                    self.decode(sound_sequence)
+                    self.decode_sequence(sound_sequence)
                     num_silent = 0
                     sound_sequence = ""
 

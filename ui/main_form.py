@@ -32,18 +32,22 @@ class MainForm(npyscreen.FormWithMenus):
 
 
         self.morse_decoder_queue = Queue(maxsize = 1000)
+
         self.morse_listener = MorseListener()
         self.morse_decoder = MorseDecoder()
         listener_thread = threading.Thread(target = self.morse_listener.listen, args = (self.morse_decoder_queue,), daemon = True)
         decoder_thread = threading.Thread(target = self.morse_decoder.decode, args = (self.morse_decoder_queue,), daemon = True)
+
+        #self.receiver_box.entry_widget.values = self.morse_listener.get_devices_list()
+
+        self.morse_decoder_queue.empty()
         listener_thread.start()
         decoder_thread.start()
 
 
-
-
     def afterEditing(self):
         self.parentApp.setNextForm(None)
+
 
     def while_waiting(self):
 
@@ -64,5 +68,5 @@ class MainForm(npyscreen.FormWithMenus):
             self.receiver_box.entry_widget.display()
 
         frequency = self.morse_decoder.get_frequency()
-        self.receiver_box.footer = "Sidetone freq: {:3.0f} KHz".format(frequency)
+        self.receiver_box.footer = "Decoding queue: {:3d} Sidetone freq: {:3.0f} KHz".format(self.morse_decoder_queue.qsize(), frequency)
         self.receiver_box.display()
