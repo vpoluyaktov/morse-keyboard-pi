@@ -2,15 +2,12 @@
 
 try:
 
-    from os import environ
     from sys import byteorder
     from array import array
     from struct import pack
     from collections import Counter
-
-    import pyaudio
     import wave
-    import struct
+
     import numpy
 
 except ImportError as error:
@@ -22,8 +19,6 @@ except ImportError as error:
 class MorseDecoder:
     output_buffer = ""
 
-    DEVICE_INDEX = 2
-
     WPS = 20
     WPS_VARIANCE = 20  # 10 persents
     FREQ = 650
@@ -32,7 +27,6 @@ class MorseDecoder:
 
     RATE = 44100  # frames per a second
     CHUNK_LENGTH_MS = 5
-    FORMAT = pyaudio.paInt16
     ALLOWANCE = 3
 
     chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
@@ -76,24 +70,6 @@ class MorseDecoder:
                        "6": "-....", "7": "--...", "8": "---..", "9": "----.", "0": "-----", "?": "..--..",
                        ".": ".-.-.-", ",": "--..--", "!": "-.-.--", "'": ".----."}
 
-    def get_devices_list(self):
-        # List all available microphone devices
-
-        device_list = []
-        pa = pyaudio.PyAudio()
-        for i in range(pa.get_device_count()):
-            dev = pa.get_device_info_by_index(i)
-            input_chn = dev.get('maxInputChannels', 0)
-            if input_chn > 0:
-                name = dev.get('name')
-                rate = dev.get('defaultSampleRate')
-
-                device_list.append([
-                    "Index {i}: {name} (Max Channels {input_chn}, Default @ {rate} Hz)".format(i = i, name = name,
-                        input_chn = input_chn, rate = int(rate))])
-
-        return device_list
-
     def is_silent(self, snd_data):
         "Returns 'True' if below the 'silent' threshold"
         return max(snd_data) < self.THRESHOLD
@@ -109,24 +85,21 @@ class MorseDecoder:
             r.append(int(i * times))
         return bytes(r, 'utf-8')
 
-    def receive(self):
+    def decode(self, morse_decoder_queue):
         sound_started = False
         syncronized = False
         num_silent = 0
         sound_sequence = ""
 
-        # print("Listening device #", self.DEVICE_INDEX)
-        p = pyaudio.PyAudio()
-
-        stream = p.open(format = self.FORMAT, channels = 1, rate = self.RATE, input = True,
-                        input_device_index = self.DEVICE_INDEX, frames_per_buffer = self.chunk)
-
         while True:
 
-            snd_data = stream.read(self.chunk, exception_on_overflow = False)
+            sound_data = morse_decoder_queue.get()
+            if sound_data is None:
+                yield
+                break
 
             if byteorder == 'big':
-                snd_data.byteswap()
+                sound_data.byteswap()
 
             # snd_data = self.normalize(snd_data)
 
@@ -134,7 +107,7 @@ class MorseDecoder:
             #sample_width = p.get_sample_size(self.FORMAT)
 
             # find frequency of each chunk
-            indata = numpy.array(wave.struct.unpack("%dh" % (self.chunk), snd_data)) * self.window
+            indata = numpy.array(wave.struct.unpack("%dh" % (self.chunk), sound_data)) * self.window
 
             # take fft and square each value
             fftData = abs(numpy.fft.rfft(indata)) ** 2
@@ -179,15 +152,13 @@ class MorseDecoder:
 
             if num_silent >= self.word_space_length_min and sound_started:
                 if sound_started and syncronized:
-                    self.decode(sound_sequence)
+                    self.decode_sequence(sound_sequence)
                 num_silent = 0
                 sound_sequence = ""
                 sound_started = False
                 syncronized = True
 
-        p.terminate()
-
-    def decode(self, list):
+    def decode_sequence(self, list):
         # print(list)
 
         line_breakers = ".?!"

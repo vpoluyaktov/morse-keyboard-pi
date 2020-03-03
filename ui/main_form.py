@@ -1,7 +1,9 @@
 import npyscreen
 import textwrap
 import threading
+from queue import Queue
 
+from receiver.listener import MorseListener
 from receiver.decoder import MorseDecoder
 from ui.receiver_pager import ReceiverPager
 
@@ -29,8 +31,12 @@ class MainForm(npyscreen.FormWithMenus):
         self.receiver_star_button = self.add(npyscreen.ButtonPress, name = "Start", relx = 150, rely =2)
 
 
+        self.morse_decoder_queue = Queue(maxsize = 1000)
+        self.morse_listener = MorseListener()
         self.morse_decoder = MorseDecoder()
-        decoder_thread = threading.Thread(target = self.morse_decoder.receive, args = (), daemon = True)
+        listener_thread = threading.Thread(target = self.morse_listener.listen, args = (self.morse_decoder_queue,), daemon = True)
+        decoder_thread = threading.Thread(target = self.morse_decoder.decode, args = (self.morse_decoder_queue,), daemon = True)
+        listener_thread.start()
         decoder_thread.start()
 
 
