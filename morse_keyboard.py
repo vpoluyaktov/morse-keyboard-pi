@@ -19,7 +19,7 @@ class App(npyscreen.NPSAppManaged):
 
     def onStart(self):
         # npyscreen.setTheme(BlueTheme)
-        self.keypress_timeout_default = 1
+        self.keypress_timeout_default = 10
         self.main_form = self.addForm("MAIN", MainForm)
         self.main_form.edit()
 
