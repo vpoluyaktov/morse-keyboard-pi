@@ -19,11 +19,14 @@ except ImportError as error:
 class MorseDecoder:
     output_buffer = ""
 
+    THRESHOLD = 300
+
     WPS = 20
     WPS_VARIANCE = 20  # 10 persents
+
     FREQ = 650
     HzVARIANCE = 20
-    THRESHOLD = 300
+    frequency_auto_tune = True
 
     RATE = 44100  # frames per a second
     CHUNK_LENGTH_MS = 5
@@ -33,6 +36,7 @@ class MorseDecoder:
     window = numpy.blackman(chunk)
 
     frequency_history = []
+    beep_duration_history = []
     keep_frequency_sec = 5
     keep_number_of_chunks = int(1000 / CHUNK_LENGTH_MS * keep_frequency_sec)
 
@@ -178,6 +182,10 @@ class MorseDecoder:
                 counter = 0
 
         for i in range(len(list)):
+            if len(list[i]) > 0:
+                self.beep_duration_history.append(len(list[i]))
+                self.beep_duration_history = self.beep_duration_history[-self.keep_number_of_chunks:]
+
             # print(len(list[i]), dit_length_min, dit_length_max)
             if len(list[i]) >= self.dit_length_min and len(list[i]) <= self.dit_length_max:
                 listascii += "."
@@ -228,4 +236,27 @@ class MorseDecoder:
             (most_common_frequency, count) = histogram.most_common(1)[0]
             # self.frequency_history = []
 
+        if self.frequency_auto_tune:
+            self.FREQ = most_common_frequency
+
         return most_common_frequency
+
+    def get_wps(self):
+
+        real_wps = 0
+        dit_duration = 0
+        dash_duration = 0
+
+        if len(self.beep_duration_history) > 0:
+            histogram = Counter(self.beep_duration_history)
+            beep_durations = histogram.most_common(2)
+            if (len(beep_durations)) == 2:
+                (dit_duration, count) = beep_durations[0]
+                (dash_duration, count) = beep_durations[1]
+
+                if dit_duration > dash_duration:
+                    tmp_duration = dit_duration
+                    dit_duration = dash_duration
+                    dash_duration = tmp_duration
+
+        return (dit_duration, dash_duration)

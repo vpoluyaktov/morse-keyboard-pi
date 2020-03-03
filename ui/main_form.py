@@ -68,5 +68,6 @@ class MainForm(npyscreen.FormWithMenus):
             self.receiver_box.entry_widget.display()
 
         frequency = self.morse_decoder.get_frequency()
-        self.receiver_box.footer = "Decoding queue: {:3d} Sidetone freq: {:3.0f} KHz".format(self.morse_decoder_queue.qsize(), frequency)
+        (dit_duration, dash_duration) = self.morse_decoder.get_wps()
+        self.receiver_box.footer = "Queue: {:3d} WSP: {:3d}/{:3d} Freq: {:3.0f} KHz".format(self.morse_decoder_queue.qsize(), dit_duration, dash_duration, frequency)
         self.receiver_box.display()
