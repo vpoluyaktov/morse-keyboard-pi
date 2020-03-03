@@ -28,7 +28,7 @@ class MorseDecoder:
     WPS_VARIANCE = 20  # 10 persents
     FREQ = 650
     HzVARIANCE = 20
-    THRESHOLD = 2
+    THRESHOLD = 300
 
     RATE = 48000  # frames per a second
     CHUNK_LENGTH_MS = 5
