@@ -22,7 +22,7 @@ except ImportError as error:
 class MorseDecoder:
     output_buffer = ""
 
-    DEVICE_INDEX = 3
+    DEVICE_INDEX = 2
 
     WPS = 20
     WPS_VARIANCE = 20  # 10 persents
@@ -162,7 +162,7 @@ class MorseDecoder:
 
             # keep last 5 sec of frequency measurements
             if frequency > 450 and frequency < 900:
-                keep_frequency_sec = 1
+                keep_frequency_sec = 10
                 keep_number_of_chunks = int(1000 / self.CHUNK_LENGTH_MS * keep_frequency_sec)
                 self.frequency_history.append(frequency)
                 self.frequency_history = self.frequency_history[-keep_number_of_chunks:]
