@@ -22,7 +22,7 @@ except ImportError as error:
 class MorseDecoder:
     output_buffer = ""
 
-    DEVICE_INDEX = 3
+    DEVICE_INDEX = 2
 
     WPS = 20
     WPS_VARIANCE = 20  # 10 persents
