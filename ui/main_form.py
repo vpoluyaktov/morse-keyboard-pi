@@ -58,5 +58,5 @@ class MainForm(npyscreen.FormWithMenus):
             self.receiver_box.entry_widget.display()
 
         frequency = self.morse_decoder.get_frequency()
-        self.receiver_box.footer = "Sidetone freq: {:5.1f} ".format(frequency)
+        self.receiver_box.footer = "Sidetone freq: {:3.0f} KHz".format(frequency)
         self.receiver_box.display()

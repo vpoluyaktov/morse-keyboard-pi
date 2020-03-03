@@ -167,7 +167,7 @@ class MorseDecoder:
 
             # keep last 5 sec of frequency measurements
             if frequency > 450 and frequency < 900:
-                self.frequency_history.append(round(frequency, 1))
+                self.frequency_history.append(round(frequency, 0))
                 self.frequency_history = self.frequency_history[-self.keep_number_of_chunks:]
 
             if frequency > (self.FREQ - self.HzVARIANCE) and frequency < (self.FREQ + self.HzVARIANCE):
