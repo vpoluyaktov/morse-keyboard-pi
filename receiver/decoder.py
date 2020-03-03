@@ -37,7 +37,12 @@ class MorseDecoder:
 
     chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
     window = numpy.blackman(chunk)
+
     frequency_history = []
+    keep_frequency_sec = 5
+    keep_number_of_chunks = int(1000 / CHUNK_LENGTH_MS * keep_frequency_sec)
+    # keep_number_of_chunks = 5
+
 
     # morse code timing
     dit_length_ms = int(1200 / WPS)
@@ -162,10 +167,8 @@ class MorseDecoder:
 
             # keep last 5 sec of frequency measurements
             if frequency > 450 and frequency < 900:
-                keep_frequency_sec = 10
-                keep_number_of_chunks = int(1000 / self.CHUNK_LENGTH_MS * keep_frequency_sec)
-                self.frequency_history.append(frequency)
-                self.frequency_history = self.frequency_history[-keep_number_of_chunks:]
+                self.frequency_history.append(round(frequency, 1))
+                self.frequency_history = self.frequency_history[-self.keep_number_of_chunks:]
 
             if frequency > (self.FREQ - self.HzVARIANCE) and frequency < (self.FREQ + self.HzVARIANCE):
                 # check if this is a new character started
