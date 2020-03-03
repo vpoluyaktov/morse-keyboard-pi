@@ -30,7 +30,7 @@ class MorseDecoder:
     HzVARIANCE = 20
     THRESHOLD = 300
 
-    RATE = 48000  # frames per a second
+    RATE = 44100  # frames per a second
     CHUNK_LENGTH_MS = 5
     FORMAT = pyaudio.paInt16
     ALLOWANCE = 3
@@ -41,8 +41,6 @@ class MorseDecoder:
     frequency_history = []
     keep_frequency_sec = 5
     keep_number_of_chunks = int(1000 / CHUNK_LENGTH_MS * keep_frequency_sec)
-    # keep_number_of_chunks = 5
-
 
     # morse code timing
     dit_length_ms = int(1200 / WPS)
@@ -120,22 +118,12 @@ class MorseDecoder:
         # print("Listening device #", self.DEVICE_INDEX)
         p = pyaudio.PyAudio()
 
-        if environ.get('DEBUG'):
-            # unfortunatelly PyCharm still doesn't have an access to Mic on Mac, so I have to emulate it
-            filename = 'morse_test.wav'
-            wav_file = wave.open(filename, 'rb')
-
-        else:
-            stream = p.open(format = self.FORMAT, channels = 1, rate = self.RATE, input = True,
-                            input_device_index = self.DEVICE_INDEX, frames_per_buffer = self.chunk)
-
+        stream = p.open(format = self.FORMAT, channels = 1, rate = self.RATE, input = True,
+                        input_device_index = self.DEVICE_INDEX, frames_per_buffer = self.chunk)
 
         while True:
 
-            if environ.get('DEBUG'):
-                snd_data = wav_file.readframes(int(self.chunk / 2))
-            else:
-                snd_data = stream.read(self.chunk, exception_on_overflow = False)
+            snd_data = stream.read(self.chunk, exception_on_overflow = False)
 
             if byteorder == 'big':
                 snd_data.byteswap()
@@ -143,7 +131,7 @@ class MorseDecoder:
             # snd_data = self.normalize(snd_data)
 
             # r.extend(snd_data)
-            sample_width = p.get_sample_size(self.FORMAT)
+            #sample_width = p.get_sample_size(self.FORMAT)
 
             # find frequency of each chunk
             indata = numpy.array(wave.struct.unpack("%dh" % (self.chunk), snd_data)) * self.window
@@ -166,9 +154,9 @@ class MorseDecoder:
                 frequency = which * self.RATE / self.chunk
 
             # keep last 5 sec of frequency measurements
-            # if frequency > 450 and frequency < 900:
-            #     self.frequency_history.append(round(frequency, 0))
-            #     self.frequency_history = self.frequency_history[-self.keep_number_of_chunks:]
+            if frequency > 450 and frequency < 900:
+                self.frequency_history.append(round(frequency, 0))
+                self.frequency_history = self.frequency_history[-self.keep_number_of_chunks:]
 
             if frequency > (self.FREQ - self.HzVARIANCE) and frequency < (self.FREQ + self.HzVARIANCE):
                 # check if this is a new character started
@@ -254,17 +242,14 @@ class MorseDecoder:
         # print(stringout, end = '', flush = True)
         self.output_buffer += stringout
 
-    #    print(list)
-    #    print(listascii)
 
     def getBuffer(self):
         buffer = self.output_buffer
         self.output_buffer = ""
+        return buffer
 
-        return buffer  # return "Test\n"
 
     def get_frequency(self):
-
         most_common_frequency = 0
 
         if len(self.frequency_history) > 0:
