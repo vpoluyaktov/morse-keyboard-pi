@@ -10,7 +10,6 @@ try:
     import warnings
     import wave
     from time import sleep
-    import matplotlib.pyplot as plt
     from queue import Queue
 
     import numpy
@@ -22,6 +21,8 @@ except ImportError as error:
 
 warnings.filterwarnings("ignore", message="divide by zero encountered")
 warnings.filterwarnings("ignore", message="invalid value encountered")
+warnings.filterwarnings("ignore", message = "Evaluate error")
+warnings.filterwarnings("ignore", message = "Unknown PCM")
 
 class MorseDecoder:
 
@@ -33,7 +34,7 @@ class MorseDecoder:
     CURRENT_THRESHOLD = 400
     ABSOLUTE_THRESHOLD = 50
     SNR = 0.5
-    sound_level_autotune = False
+    sound_level_autotune = True
 
     WPS = 20
     WPS_VARIANCE = 30  # 10 persents
@@ -76,12 +77,6 @@ class MorseDecoder:
     word_space_length_min = dit_length_min * 7
     word_space_length_max = dit_length_max * 7
 
-    print("dit: ", dit_length_ms, "ms ", dit_length_min, "-", dit_length_max)
-    print("dah: ", dah_length_ms, "ms ", dah_length_min, "-", dah_length_max)
-    print("char: ", char_space_length_min, "-", char_space_length_max)
-    print("letter: ", letter_space_length_min, "-", letter_space_length_max)
-    print("word: ", word_space_length_min, "-", word_space_length_max)
-
     WINDOW = letter_space_length_min  # process letter by letter
 
     letter_to_morse = {"A": ".-", "B": "-...", "C": "-.-.", "D": "-..", "E": ".", "F": "..-.", "G": "--.", "H": "....",
@@ -95,7 +90,7 @@ class MorseDecoder:
         "Returns 'True' if below the 'silent' threshold"
         if sound_level > self.ABSOLUTE_THRESHOLD:
             self.sound_level_history.append(int(sound_level))
-            self.sound_level_history = self.sound_level_history[-self.keep_number_of_chunks * 10:]
+            self.sound_level_history = self.sound_level_history[-self.keep_number_of_chunks * 2:]
         return  sound_level < self.CURRENT_THRESHOLD
 
     def normalize(self, snd_data):
@@ -124,6 +119,8 @@ class MorseDecoder:
 
         if self.DEBUG:
             in_file = open(self.debug_input_data, "rb")
+
+            import matplotlib.pyplot as plt
 
             fig, axs = plt.subplots(5)
             # fig.suptitle('DEBUG PLOT')
