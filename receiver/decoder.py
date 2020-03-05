@@ -23,6 +23,7 @@ warnings.filterwarnings("ignore", message="divide by zero encountered")
 warnings.filterwarnings("ignore", message="invalid value encountered")
 warnings.filterwarnings("ignore", message = "Evaluate error")
 warnings.filterwarnings("ignore", message = "Unknown PCM")
+warnings.filterwarnings("ignore", message = "ALSA")
 
 class MorseDecoder:
 
