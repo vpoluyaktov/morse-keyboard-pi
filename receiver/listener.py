@@ -25,7 +25,7 @@ class MorseListener:
     DEVICE_INDEX = 2
 
     RATE = 44100  # frames per a second
-    CHUNK_LENGTH_MS = 5
+    CHUNK_LENGTH_MS = 10
     FORMAT = pyaudio.paInt16
     ALLOWANCE = 3
 
