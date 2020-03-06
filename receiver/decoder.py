@@ -147,19 +147,21 @@ class MorseDecoder:
             raise ValueError(
                 "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
-        s = numpy.r_[array[window_len-1:0:-1],
-                     array, array[-2:-window_len-1:-1]]
+        s = numpy.r_[array[window_len-1:0:-1], array, array[-2:-window_len-1:-1]]
 
         if window == 'flat':  # moving average
             window_array = numpy.ones(window_len, 'd')
         else:
             window_array = eval('numpy.'+window+'(window_len)')
 
-        smothed_array = numpy.convolve(
+        smoothed_array = numpy.convolve(
             window_array/window_array.sum(), s, mode='valid')
-        # smothed_array = smothed_array[(window_len/2-1):-(window_len/2)]
 
-        return smothed_array
+        # adjust the array length    
+        smoothed_array = smoothed_array[int(window_len/2-1):-int(window_len/2)]
+
+        return smoothed_array
+
 
     def decode(self, morse_decoder_queue):
         sound_started = False
@@ -313,7 +315,7 @@ class MorseDecoder:
                     linewidth=line_width, color=lines_color)
         axs[4].plot(self.graph_sound_sequence,
                     linewidth=line_width, color=lines_color)
-        axs[5].plot(self.smooth_array(numpy.array(self.graph_sound_sequence, dtype=numpy.float64), window_len=3, window='hanning'),
+        axs[5].plot(self.smooth_array(numpy.array(self.graph_sound_sequence, dtype=numpy.float64), window_len=10, window='blackman'),
                     linewidth=line_width, color=lines_color)
 
         horizontal_lines_width = 0.2
@@ -346,8 +348,8 @@ class MorseDecoder:
                             top=0.95, bottom=0.05, wspace=0.2, hspace=0.4)
 
         fig.savefig("debug_plot.png")
-        numpy.savetxt('data.csv', numpy.array(
-            self.graph_sound_sequence, dtype=numpy.float64), fmt='%d', delimiter=',')
+        # numpy.savetxt('data.csv', numpy.array(
+        #     self.graph_sound_sequence, dtype=numpy.float64), fmt='%d', delimiter=',')
 
     def decode_sequence(self, list):
         # print(list)
