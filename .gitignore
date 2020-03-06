@@ -1,2 +1,6 @@
 *__pycache__/
 morse_test.wav
+.idea/
+.vscode/
+sound-data.wav
+sound-data.bin
