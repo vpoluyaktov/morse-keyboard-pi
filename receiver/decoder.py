@@ -89,7 +89,6 @@ class MorseDecoder:
                        "6": "-....", "7": "--...", "8": "---..", "9": "----.", "0": "-----", "?": "..--..",
                        ".": ".-.-.-", ",": "--..--", "!": "-.-.--", "'": ".----."}
 
-
     graph_is_saving = False
     graph_save_sec = 0.2
     graph_sound_data = []
@@ -132,6 +131,36 @@ class MorseDecoder:
             r.append(int(i * times))
         return bytes(r, 'utf-8')
 
+    def smooth_array(self, array, window_len=11, window='hanning'):
+
+        if array.ndim != 1:
+            raise ValueError("smooth only accepts 1 dimension arrays.")
+
+        if array.size < window_len:
+            raise ValueError(
+                "Input vector needs to be bigger than window size.")
+
+        if window_len < 3:
+            return array
+
+        if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+            raise ValueError(
+                "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
+
+        s = numpy.r_[array[window_len-1:0:-1],
+                     array, array[-2:-window_len-1:-1]]
+
+        if window == 'flat':  # moving average
+            window_array = numpy.ones(window_len, 'd')
+        else:
+            window_array = eval('numpy.'+window+'(window_len)')
+
+        smothed_array = numpy.convolve(
+            window_array/window_array.sum(), s, mode='valid')
+        # smothed_array = smothed_array[(window_len/2-1):-(window_len/2)]
+
+        return smothed_array
+
     def decode(self, morse_decoder_queue):
         sound_started = False
         syncronized = False
@@ -169,7 +198,8 @@ class MorseDecoder:
             # take fft and square each value
             fft_data_square = abs(numpy.fft.rfft(indata)) ** 2
             if self.graph_is_saving:
-                self.graph_fft_data = numpy.append(self.graph_fft_data, fft_data_square)
+                self.graph_fft_data = numpy.append(
+                    self.graph_fft_data, fft_data_square)
 
             # find the maximum
             which = fft_data_square[1:].argmax() + 1
@@ -208,7 +238,7 @@ class MorseDecoder:
                 self.frequency_history = self.frequency_history[-self.keep_number_of_chunks:]
 
             if frequency >= self.frequency_min and frequency <= self.frequency_max:
-                self.graph_sound_sequence += "1"
+                self.graph_sound_sequence.append(1)
                 # check if this is a new character started
                 if num_silent >= self.letter_space_length_min and sound_started and syncronized:
                     self.decode_sequence(sound_sequence)
@@ -219,13 +249,13 @@ class MorseDecoder:
                 num_silent = 0
                 sound_started = True
             elif sound_started:
-                self.graph_sound_sequence += "0"
+                self.graph_sound_sequence.append(0)
                 num_silent += 1
                 if syncronized:
                     sound_sequence += "0"
             else:
                 # waiting for long selence so don't break a word
-                self.graph_sound_sequence += "0"
+                self.graph_sound_sequence.append(0)
                 num_silent += 1
 
             if num_silent >= self.word_space_length_min and sound_started:
@@ -233,10 +263,9 @@ class MorseDecoder:
                     self.decode_sequence(sound_sequence)
                 num_silent = 0
                 sound_sequence = ""
-                # self.graph_sound_sequence = ""
+                # self.graph_sound_sequence = []
                 sound_started = False
                 syncronized = True
-
 
     def generate_plot(self):
 
@@ -253,68 +282,72 @@ class MorseDecoder:
         self.graph_number_of_chunks_collected = 0
         self.graph_is_saving = True
 
-
     def save_plot(self):
 
-            import matplotlib.pyplot as plt
+        import matplotlib.pyplot as plt
 
-            plt.switch_backend('Agg') # don't try to create a GUI window
+        plt.switch_backend('Agg')  # don't try to create a GUI window
 
-            snr = self.signaltonoise(self.graph_indata, 0, 0)
+        snr = self.signaltonoise(self.graph_indata, 0, 0)
 
+        fig, axs = plt.subplots(6)
+        fig.set_size_inches(20, 18)
+        # fig.suptitle('graph PLOT')
+        axs[0].set_title("Unpacked input bytes (SNR={:3.4f})".format(snr))
+        axs[1].set_title("Square of FFT data")
+        axs[2].set_title("Detected frequency")
+        axs[3].set_title("Sound level")
+        axs[4].set_title("Sound sequence")
+        axs[5].set_title("Sound sequence smoothed")
+        axs[3].set_ylim(ymin=0, auto=True)
+        axs[4].set_ylim(ymin=0, ymax=1.5)
 
-            fig, axs = plt.subplots(5)
-            fig.set_size_inches(20.08, 11.42)
-            # fig.suptitle('graph PLOT')
-            axs[0].set_title("Unpacked input bytes (SNR={:3.4f})".format(snr))
-            axs[1].set_title("Square of FFT data")
-            axs[2].set_title("Detected frequency")
-            axs[3].set_title("Sound level")
-            axs[4].set_title("Sound sequence")
-            axs[3].set_ylim(ymin=0, auto=True)
-            axs[4].set_ylim(ymin=0, ymax=1.5)
+        lines_color = 'r'
+        line_width = 0.5
+        axs[0].plot(self.graph_indata, linewidth=line_width, color=lines_color)
+        axs[1].plot(self.graph_fft_data, linewidth=line_width,
+                    color=lines_color)
+        axs[2].plot(self.graph_frequency_data,
+                    linewidth=line_width, color=lines_color)
+        axs[3].plot(self.graph_sound_level_data,
+                    linewidth=line_width, color=lines_color)
+        axs[4].plot(self.graph_sound_sequence,
+                    linewidth=line_width, color=lines_color)
+        axs[5].plot(self.smooth_array(numpy.array(self.graph_sound_sequence, dtype=numpy.float64), window_len=3, window='hanning'),
+                    linewidth=line_width, color=lines_color)
 
-            lines_color = 'r'
-            line_width = 0.5
-            axs[0].plot(self.graph_indata, linewidth=line_width, color=lines_color)
-            axs[1].plot(self.graph_fft_data, linewidth=line_width,
-                        color=lines_color)
-            axs[2].plot(self.graph_frequency_data,
-                        linewidth=line_width, color=lines_color)
-            axs[3].plot(self.graph_sound_level_data,
-                        linewidth=line_width, color=lines_color)
-            axs[4].plot(list(self.graph_sound_sequence),
-                        linewidth=line_width, color=lines_color)
+        horizontal_lines_width = 0.2
+        horizontal_lines_color = 'b'
+        axs[2].plot(self.graph_frequency_autotune_min, linewidth=horizontal_lines_width,
+                    color=horizontal_lines_color)
+        axs[2].plot(self.graph_frequency_autotune_max, linewidth=horizontal_lines_width,
+                    color=horizontal_lines_color)
+        axs[3].plot(self.graph_sound_level_autotune,
+                    linewidth=horizontal_lines_width, color=horizontal_lines_color)
 
-            horizontal_lines_width = 0.2
-            horizontal_lines_color = 'b'
-            axs[2].plot(self.graph_frequency_autotune_min, linewidth=horizontal_lines_width,
-                        color=horizontal_lines_color)
-            axs[2].plot(self.graph_frequency_autotune_max, linewidth=horizontal_lines_width,
-                        color=horizontal_lines_color)
-            axs[3].plot(self.graph_sound_level_autotune,
-                        linewidth=horizontal_lines_width, color=horizontal_lines_color)
+        if self.graph_save_sec <= 1:
+            vertical_lines_width = 0.2
+            vertical_lines_color = 'k'
+            for i in range(len(self.graph_sound_sequence)):
+                axs[0].axvline(
+                    i * self.chunk, linewidth=vertical_lines_width, color=vertical_lines_color)
+                axs[1].axvline(
+                    i * self.chunk / 2, linewidth=vertical_lines_width, color=vertical_lines_color)
+                axs[2].axvline(i, linewidth=vertical_lines_width,
+                               color=vertical_lines_color)
+                axs[3].axvline(i, linewidth=vertical_lines_width,
+                               color=vertical_lines_color)
+                axs[4].axvline(i, linewidth=vertical_lines_width,
+                               color=vertical_lines_color)
+                axs[5].axvline(i, linewidth=vertical_lines_width,
+                               color=vertical_lines_color)
 
-            if self.graph_save_sec <= 2:
-                vertical_lines_width = 0.2
-                vertical_lines_color = 'k'
-                for i in range(len(self.graph_sound_sequence)):
-                    axs[0].axvline(
-                        i * self.chunk, linewidth=vertical_lines_width, color=vertical_lines_color)
-                    axs[1].axvline(
-                        i * self.chunk / 2, linewidth=vertical_lines_width, color=vertical_lines_color)
-                    axs[2].axvline(i, linewidth=vertical_lines_width,
-                                   color=vertical_lines_color)
-                    axs[3].axvline(i, linewidth=vertical_lines_width,
-                                   color=vertical_lines_color)
-                    axs[4].axvline(i, linewidth=vertical_lines_width,
-                                   color=vertical_lines_color)
+        fig.subplots_adjust(left=0.03, right=0.98,
+                            top=0.95, bottom=0.05, wspace=0.2, hspace=0.4)
 
-            fig.subplots_adjust(left=0.03, right=0.98,
-                                top=0.95, bottom=0.05, wspace=0.2, hspace=0.4)
-
-            fig.savefig("debug_plot.png") 
-
+        fig.savefig("debug_plot.png")
+        numpy.savetxt('data.csv', numpy.array(
+            self.graph_sound_sequence, dtype=numpy.float64), fmt='%d', delimiter=',')
 
     def decode_sequence(self, list):
         # print(list)

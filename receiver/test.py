@@ -1,42 +1,64 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+import numpy
+import matplotlib.pyplot as plt
 
-from __future__ import print_function
-import scipy.io.wavfile as wavfile
-import scipy
-import scipy.fftpack
-import numpy as np
-from matplotlib import pyplot as plt
 
-fs_rate, signal = wavfile.read("../sound-data.wav")
-print ("Frequency sampling", fs_rate)
-l_audio = len(signal.shape)
-print ("Channels", l_audio)
-if l_audio == 2:
-    signal = signal.sum(axis=1) / 2
-N = signal.shape[0]
-print ("Complete Samplings N", N)
-secs = N / float(fs_rate)
-print ("secs", secs)
-Ts = 1.0/fs_rate # sampling interval in time
-print ("Timestep between samples Ts", Ts)
-t = np.arange(0, secs, Ts) # time vector as scipy arange field / numpy.ndarray
-FFT = abs(scipy.fft.fft(signal))
-FFT_side = FFT[range(int(N/2))] # one side FFT range
-freqs = scipy.fftpack.fftfreq(signal.size, t[1]-t[0])
-fft_freqs = np.array(freqs)
-freqs_side = freqs[range(int(N/2))] # one side frequency range
-fft_freqs_side = np.array(freqs_side)
-plt.subplot(311)
-p1 = plt.plot(t, signal, "g") # plotting the signal
-plt.xlabel('Time')
-plt.ylabel('Amplitude')
-plt.subplot(312)
-p2 = plt.plot(freqs, FFT, "r") # plotting the complete fft spectrum
-plt.xlabel('Frequency (Hz)')
-plt.ylabel('Count dbl-sided')
-plt.subplot(313)
-p3 = plt.plot(freqs_side, abs(FFT_side), "b") # plotting the positive fft spectrum
-plt.xlabel('Frequency (Hz)')
-plt.ylabel('Count single-sided')
-plt.show()
+def smooth_array(array, window_len=11, window='hanning'):
+
+    if array.ndim != 1:
+        raise ValueError("smooth only accepts 1 dimension arrays.")
+
+    if array.size < window_len:
+        raise ValueError(
+            "Input vector needs to be bigger than window size.")
+
+    if window_len < 3:
+        return array
+
+    if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+        raise ValueError(
+            "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
+
+    s = numpy.r_[array[window_len-1:0:-1], array, array[-2:-window_len-1:-1]]
+
+    if window == 'flat':  # moving average
+        window_array = numpy.ones(window_len, 'd')
+    else:
+        window_array = eval('numpy.'+window+'(window_len)')
+
+    smothed_array = numpy.convolve(
+        window_array/window_array.sum(), s, mode='valid')
+    # smothed_array = smothed_array[(window_len/2-1):-(window_len/2)]
+
+    return smothed_array
+
+
+def smooth_test():
+
+    window_len = 10
+    window_type = "blackman"
+
+    input_array = numpy.loadtxt('data.csv')
+    smoothed_array = smooth_array(
+        input_array, window_len=window_len, window=window_type)
+    restored_array = numpy.around(smoothed_array).astype(int)
+
+    fig, axs = plt.subplots(3)
+    axs[0].set_title("Input sequence")
+    axs[0].plot(input_array)
+
+    axs[1].set_title("Smothed array (window={:d}, type='{:s}')".format(
+        window_len, window_type))
+    axs[1].plot(smoothed_array)
+    axs[1].axhline(0.5, color='r', linestyle='dotted')
+
+    axs[2].set_title("Restored array")
+    axs[2].plot(restored_array)
+
+    plt.ion()
+    fig.show()
+
+
+if __name__ == '__main__':
+    smooth_test()
+    input("Press [enter] to continue.")
+    print("done")

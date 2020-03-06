@@ -12,8 +12,8 @@ except ImportError as error:
 from ui.themes.BlueTheme import BlueTheme
 from ui.main_form import MainForm
 
-class App(npyscreen.NPSAppManaged):
 
+class App(npyscreen.NPSAppManaged):
 
     main_form = None
 
@@ -26,7 +26,7 @@ class App(npyscreen.NPSAppManaged):
     def while_waiting(self):
         None
 
+
 if __name__ == "__main__":
     app = App()
     app.run()
-
