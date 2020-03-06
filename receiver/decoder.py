@@ -402,28 +402,16 @@ class MorseDecoder:
         return (dit_duration, dash_duration)
 
     def get_sound_level(self):
-        beep_level = 0
+        sound_level = 0
 
         if len(self.sound_level_history) > 0:
-            # histogram = Counter(self.sound_level_history)
-            # sound_levels = histogram.most_common(2)
-            #
-            # if (len(sound_levels)) == 2:
-            #     (beep_level, count) = sound_levels[0]
-            #     (silence_level, count) = sound_levels[1]
-            #
-            #     if beep_level < silence_level:
-            #         tmp_duration = beep_level
-            #         beep_level = silence_level
-            #         silence_level = tmp_duration
-            #
-            # beep_level = numpy.median(self.sound_level_history)
-            beep_level = int(numpy.mean(self.sound_level_history))
 
-            if self.sound_level_autotune and beep_level >= self.THRESHOLD_LOW_LIMIT:
-                self.threshold = int(beep_level * self.SNR)
+            sound_level = int(numpy.mean(self.sound_level_history))
 
-        return beep_level
+            if self.sound_level_autotune and sound_level >= self.THRESHOLD_LOW_LIMIT:
+                self.threshold = int(sound_level * self.SNR)
+
+        return (sound_level, self.threshold)
 
 
 if __name__ == "__main__":
