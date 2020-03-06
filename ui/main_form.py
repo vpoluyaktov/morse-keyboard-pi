@@ -44,6 +44,8 @@ class MainForm(npyscreen.FormWithMenus):
         listener_thread.start()
         decoder_thread.start()
 
+        self.receiver_star_button.whenPressed = self.morse_decoder.generate_plot
+
 
     def afterEditing(self):
         self.parentApp.setNextForm(None)

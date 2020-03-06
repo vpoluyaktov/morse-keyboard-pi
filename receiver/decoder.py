@@ -27,18 +27,13 @@ warnings.filterwarnings("ignore", message="ALSA")
 
 
 class MorseDecoder:
-    DEBUG = False
-    DEBUG_READ_SEC = 0.2
-    debug_input_data = "sound-data.bin"
-
-    output_buffer = ""
 
     threshold = 1200
     sound_level_autotune = True
     SNR = 0.6
     THRESHOLD_LOW_LIMIT = 50
 
-    wpm = 19
+    wpm = 20
     wpm_variance = 30  # percent
 
     frequency = 600
@@ -94,6 +89,22 @@ class MorseDecoder:
                        "6": "-....", "7": "--...", "8": "---..", "9": "----.", "0": "-----", "?": "..--..",
                        ".": ".-.-.-", ",": "--..--", "!": "-.-.--", "'": ".----."}
 
+
+    graph_is_saving = False
+    graph_save_sec = 0.2
+    graph_sound_data = []
+    graph_indata = None
+    graph_fft_data = None
+    graph_frequency_data = []
+    graph_sound_level_data = []
+    graph_sound_sequence = []
+    graph_sound_level_autotune = []
+    graph_frequency_autotune_min = []
+    graph_frequency_autotune_max = []
+    graph_number_of_chunks_collected = 0
+
+    output_buffer = ""
+
     def is_silent(self, sound_level):
         "Returns 'True' if below the 'silent' threshold"
         if sound_level > self.THRESHOLD_LOW_LIMIT:
@@ -127,38 +138,19 @@ class MorseDecoder:
         num_silent = 0
         sound_sequence = ""
 
-        debug_sound_data = []
-        debug_indata = numpy.empty((0, 3), float)
-        debug_fft_data = numpy.empty((0, 3), float)
-        debug_frequency_data = []
-        debug_sound_level_data = []
-        debug_sound_sequence = []
-        debug_sound_level_autotune = []
-        debug_frequency_autotune_min = []
-        debug_frequency_autotune_max = []
-        in_file = None
-        number_of_chunks_read = 0
-
-        if self.DEBUG:
-            in_file = open(self.debug_input_data, "rb")
-
         while True:
-            if self.DEBUG:
-                sound_data = in_file.read(self.chunk * 2)
-                number_of_chunks_read += 1
-                if len(sound_data) < self.chunk * 2 or number_of_chunks_read > int(self.DEBUG_READ_SEC / self.CHUNK_LENGTH_MS * 1000 * 2):
-                    break
-                debug_sound_data += sound_data
-            else:
-                sound_data = morse_decoder_queue.get()
+            sound_data = morse_decoder_queue.get()
+
+            if self.graph_is_saving:
+                if self.graph_number_of_chunks_collected > int(self.graph_save_sec / self.CHUNK_LENGTH_MS * 1000 * 2):
+                    self.graph_is_saving = False
+                    self.save_plot()
+                else:
+                    self.graph_sound_data += sound_data
+                    self.graph_number_of_chunks_collected += 1
 
             if sound_data is None:
                 continue
-
-            if os.environ.get('WRITE_DATA'):
-                out_file = open(self.debug_input_data, "ab")
-                out_file.write(sound_data)
-                out_file.close()
 
             if byteorder == 'big':
                 sound_data.byteswap()
@@ -171,22 +163,22 @@ class MorseDecoder:
             # find frequency of each chunk
             indata = numpy.array(wave.struct.unpack(
                 "%dh" % (self.chunk), sound_data)) * self.window
-            if self.DEBUG:
-                debug_indata = numpy.append(debug_indata, indata)
+            if self.graph_is_saving:
+                self.graph_indata = numpy.append(self.graph_indata, indata)
 
             # take fft and square each value
             fft_data_square = abs(numpy.fft.rfft(indata)) ** 2
-            if self.DEBUG:
-                debug_fft_data = numpy.append(debug_fft_data, fft_data_square)
+            if self.graph_is_saving:
+                self.graph_fft_data = numpy.append(self.graph_fft_data, fft_data_square)
 
             # find the maximum
             which = fft_data_square[1:].argmax() + 1
 
             sound_level = max(indata)
-            if self.DEBUG:
-                debug_sound_level_data.append(sound_level)
+            if self.graph_is_saving:
+                self.graph_sound_level_data.append(sound_level)
                 self.get_sound_level()
-                debug_sound_level_autotune.append(self.threshold)
+                self.graph_sound_level_autotune.append(self.threshold)
 
             silent = self.is_silent(sound_level)
 
@@ -204,11 +196,11 @@ class MorseDecoder:
             else:
                 frequency = which * self.RATE / self.chunk
 
-            if self.DEBUG:
-                debug_frequency_data.append(frequency)
+            if self.graph_is_saving:
+                self.graph_frequency_data.append(frequency)
                 self.get_frequency()
-                debug_frequency_autotune_min.append(self.frequency_min)
-                debug_frequency_autotune_max.append(self.frequency_max)
+                self.graph_frequency_autotune_min.append(self.frequency_min)
+                self.graph_frequency_autotune_max.append(self.frequency_max)
 
             # keep last 5 sec of frequency measurements
             if frequency >= self.FREQUENCY_LOW_LIMIT and frequency <= self.FREQUENCY_HIGH_LIMIT:
@@ -216,24 +208,24 @@ class MorseDecoder:
                 self.frequency_history = self.frequency_history[-self.keep_number_of_chunks:]
 
             if frequency >= self.frequency_min and frequency <= self.frequency_max:
-                debug_sound_sequence += "1"
+                self.graph_sound_sequence += "1"
                 # check if this is a new character started
                 if num_silent >= self.letter_space_length_min and sound_started and syncronized:
                     self.decode_sequence(sound_sequence)
                     num_silent = 0
-                    sound_sequence = ""  # debug_sound_sequence = ""
+                    sound_sequence = ""  # self.graph_sound_sequence = ""
                 if syncronized:
                     sound_sequence += "1"
                 num_silent = 0
                 sound_started = True
             elif sound_started:
-                debug_sound_sequence += "0"
+                self.graph_sound_sequence += "0"
                 num_silent += 1
                 if syncronized:
                     sound_sequence += "0"
             else:
                 # waiting for long selence so don't break a word
-                debug_sound_sequence += "0"
+                self.graph_sound_sequence += "0"
                 num_silent += 1
 
             if num_silent >= self.word_space_length_min and sound_started:
@@ -241,17 +233,39 @@ class MorseDecoder:
                     self.decode_sequence(sound_sequence)
                 num_silent = 0
                 sound_sequence = ""
-                # debug_sound_sequence = ""
+                # self.graph_sound_sequence = ""
                 sound_started = False
                 syncronized = True
 
-        if self.DEBUG:
+
+    def generate_plot(self):
+
+        self.graph_save_sec = 2
+        self.graph_sound_data = []
+        self.graph_indata = numpy.empty((0, 3), float)
+        self.graph_fft_data = numpy.empty((0, 3), float)
+        self.graph_frequency_data = []
+        self.graph_sound_level_data = []
+        self.graph_sound_sequence = []
+        self.graph_sound_level_autotune = []
+        self.graph_frequency_autotune_min = []
+        self.graph_frequency_autotune_max = []
+        self.graph_number_of_chunks_collected = 0
+        self.graph_is_saving = True
+
+
+    def save_plot(self):
+
             import matplotlib.pyplot as plt
 
-            snr = self.signaltonoise(debug_indata, 0, 0)
+            plt.switch_backend('Agg') # don't try to create a GUI window
+
+            snr = self.signaltonoise(self.graph_indata, 0, 0)
+
 
             fig, axs = plt.subplots(5)
-            # fig.suptitle('DEBUG PLOT')
+            fig.set_size_inches(20.08, 11.42)
+            # fig.suptitle('graph PLOT')
             axs[0].set_title("Unpacked input bytes (SNR={:3.4f})".format(snr))
             axs[1].set_title("Square of FFT data")
             axs[2].set_title("Detected frequency")
@@ -262,29 +276,29 @@ class MorseDecoder:
 
             lines_color = 'r'
             line_width = 0.5
-            axs[0].plot(debug_indata, linewidth=line_width, color=lines_color)
-            axs[1].plot(debug_fft_data, linewidth=line_width,
+            axs[0].plot(self.graph_indata, linewidth=line_width, color=lines_color)
+            axs[1].plot(self.graph_fft_data, linewidth=line_width,
                         color=lines_color)
-            axs[2].plot(debug_frequency_data,
+            axs[2].plot(self.graph_frequency_data,
                         linewidth=line_width, color=lines_color)
-            axs[3].plot(debug_sound_level_data,
+            axs[3].plot(self.graph_sound_level_data,
                         linewidth=line_width, color=lines_color)
-            axs[4].plot(list(debug_sound_sequence),
+            axs[4].plot(list(self.graph_sound_sequence),
                         linewidth=line_width, color=lines_color)
 
             horizontal_lines_width = 0.2
             horizontal_lines_color = 'b'
-            axs[2].plot(debug_frequency_autotune_min, linewidth=horizontal_lines_width,
+            axs[2].plot(self.graph_frequency_autotune_min, linewidth=horizontal_lines_width,
                         color=horizontal_lines_color)
-            axs[2].plot(debug_frequency_autotune_max, linewidth=horizontal_lines_width,
+            axs[2].plot(self.graph_frequency_autotune_max, linewidth=horizontal_lines_width,
                         color=horizontal_lines_color)
-            axs[3].plot(debug_sound_level_autotune,
+            axs[3].plot(self.graph_sound_level_autotune,
                         linewidth=horizontal_lines_width, color=horizontal_lines_color)
 
-            if self.DEBUG_READ_SEC <= 2:
+            if self.graph_save_sec <= 2:
                 vertical_lines_width = 0.2
                 vertical_lines_color = 'k'
-                for i in range(len(debug_sound_sequence)):
+                for i in range(len(self.graph_sound_sequence)):
                     axs[0].axvline(
                         i * self.chunk, linewidth=vertical_lines_width, color=vertical_lines_color)
                     axs[1].axvline(
@@ -298,7 +312,9 @@ class MorseDecoder:
 
             fig.subplots_adjust(left=0.03, right=0.98,
                                 top=0.95, bottom=0.05, wspace=0.2, hspace=0.4)
-            fig.show()
+
+            fig.savefig("debug_plot.png") 
+
 
     def decode_sequence(self, list):
         # print(list)
@@ -416,7 +432,7 @@ class MorseDecoder:
 
 if __name__ == "__main__":
     decoder = MorseDecoder()
-    decoder.DEBUG = True
+    decoder.graph_is_saving = True
     morse_decoder_queue = Queue(maxsize=1)
     decoder.decode(morse_decoder_queue)
     buffer = decoder.getBuffer()
