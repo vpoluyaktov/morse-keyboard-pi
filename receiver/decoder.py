@@ -30,13 +30,16 @@ class MorseDecoder:
 
     threshold = 1200
     sound_level_autotune = True
-    SNR = 0.6
+    SNR = 0.7
     THRESHOLD_LOW_LIMIT = 50
 
-    wpm = 20
+    smooth_window_len = 5
+    smooth_window_type = 'flat'
+
+    wpm = 19
     wpm_variance = 30  # percent
 
-    frequency = 600
+    frequency = 650
     frequency_auto_tune = True
     frequency_variance = 20  # percent
 
@@ -82,7 +85,7 @@ class MorseDecoder:
 
     cutoff_threshold = letter_space_length_min  # process letter by letter
 
-    LETTER_TO_MORSE = {"A": ".-", "B": "-...", "C": "-.-.", "D": "-..", "E": ".", "F": "..-.", "G": "--.", "H": "....",
+    LETTER_TO_MORSE = {" ": "/", "A": ".-", "B": "-...", "C": "-.-.", "D": "-..", "E": ".", "F": "..-.", "G": "--.", "H": "....",
                        "I": "..", "J": ".---", "K": "-.-", "L": ".-..", "M": "--", "N": "-.", "O": "---", "P": ".--.",
                        "Q": "--.-", "R": ".-.", "S": "...", "T": "-", "U": "..-", "V": "...-", "W": ".--", "X": "-..-",
                        "Y": "-.--", "Z": "--..", "1": ".----", "2": "..---", "3": "...--", "4": "....-", "5": ".....",
@@ -131,7 +134,7 @@ class MorseDecoder:
             r.append(int(i * times))
         return bytes(r, 'utf-8')
 
-    def smooth_array(self, array, window_len=11, window='hanning'):
+    def smooth_array(self, array, window_len=11, window_type='hanning'):
 
         if array.ndim != 1:
             raise ValueError("smooth only accepts 1 dimension arrays.")
@@ -143,17 +146,17 @@ class MorseDecoder:
         if window_len < 3:
             return array
 
-        if not window in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
+        if not window_type in ['flat', 'hanning', 'hamming', 'bartlett', 'blackman']:
             raise ValueError(
                 "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
         s = numpy.r_[array[window_len-1:0:-1],
                      array, array[-2:-window_len-1:-1]]
 
-        if window == 'flat':  # moving average
+        if window_type == 'flat':  # moving average
             window_array = numpy.ones(window_len, 'd')
         else:
-            window_array = eval('numpy.'+window+'(window_len)')
+            window_array = eval('numpy.'+window_type+'(window_len)')
 
         smoothed_array = numpy.convolve(
             window_array/window_array.sum(), s, mode='valid')
@@ -167,7 +170,7 @@ class MorseDecoder:
         sound_started = False
         syncronized = False
         num_silent = 0
-        sound_sequence = ""
+        sound_sequence = []
 
         while True:
             sound_data = morse_decoder_queue.get()
@@ -245,16 +248,16 @@ class MorseDecoder:
                 if num_silent >= self.letter_space_length_min and sound_started and syncronized:
                     self.decode_sequence(sound_sequence)
                     num_silent = 0
-                    sound_sequence = ""  # self.graph_sound_sequence = ""
+                    sound_sequence = []
                 if syncronized:
-                    sound_sequence += "1"
+                    sound_sequence.append(1)
                 num_silent = 0
                 sound_started = True
             elif sound_started:
                 self.graph_sound_sequence.append(0)
                 num_silent += 1
                 if syncronized:
-                    sound_sequence += "0"
+                    sound_sequence.append(0)
             else:
                 # waiting for long selence so don't break a word
                 self.graph_sound_sequence.append(0)
@@ -264,8 +267,7 @@ class MorseDecoder:
                 if sound_started and syncronized:
                     self.decode_sequence(sound_sequence)
                 num_silent = 0
-                sound_sequence = ""
-                # self.graph_sound_sequence = []
+                sound_sequence = []
                 sound_started = False
                 syncronized = True
 
@@ -317,7 +319,7 @@ class MorseDecoder:
         axs[4].plot(self.graph_sound_sequence,
                     linewidth=line_width, color=lines_color)
         smoothed_array = self.smooth_array(numpy.array(
-            self.graph_sound_sequence, dtype=numpy.float64), window_len=10, window='blackman')
+            self.graph_sound_sequence, dtype=numpy.float64), window_len=self.smooth_window_len, window_type=self.smooth_window_type)
         axs[5].plot(smoothed_array,
                     linewidth=line_width, color=lines_color)
         restored_array = numpy.around(smoothed_array).astype(int)
@@ -363,36 +365,43 @@ class MorseDecoder:
         line_breakers = ".?!"
         last_character = ""
 
-        list = list.split("0")
-        listascii = ""
+        # smooth array
+        list = self.smooth_array(numpy.array(
+            list, dtype=numpy.float64), window_len=self.smooth_window_len, window_type=self.smooth_window_type)
+
+        # restore array
+        list = numpy.around(list).astype(int)
+
         counter = 0
-
-        # for i in range(len(list)):
-        #     if len(list[i]) == 0:  # blank character adds 1
-        #         counter += 1
-        #     else:
-        #         if counter < self.ALLOWANCE:
-        #             list[i] += list[i - counter - 1]
-        #             list[i - counter - 1] = ""
-        #         counter = 0
-
+        sounding = False
+        listascii = ""
         for i in range(len(list)):
-            if len(list[i]) > 0:
-                self.beep_duration_history.append(len(list[i]))
-                self.beep_duration_history = self.beep_duration_history[-self.keep_number_of_chunks:]
+            if list[i] == 1:
+                if sounding:
+                    counter += 1
+                else:  # a silence ended
+                    if counter >= self.char_space_length_min and counter <= self.char_space_length_max:
+                        None  # listascii += ""
+                    elif counter >= self.letter_space_length_min and counter <= self.letter_space_length_max:
+                        listascii += " "
+ 
+                    counter = 1
+                    sounding = True
+            else:
+                if not sounding:
+                    counter += 1
+                    if counter >= self.word_space_length_min:
+                        listascii += " /"
+                else:  # a beep ended, let's decide is it dit or dah
+                    if counter >= self.dit_length_min and counter <= self.dit_length_max:
+                        listascii += "."
+                    elif counter >= self.dah_length_min and counter <= self.dah_length_max:
+                        listascii += "-"
 
-            # print(len(list[i]), dit_length_min, dit_length_max)
-            if len(list[i]) >= self.dit_length_min and len(list[i]) <= self.dit_length_max:
-                listascii += "."
-                counter = 0
-            elif len(list[i]) >= self.dah_length_min and len(list[i]) <= self.dah_length_max:
-                listascii += "-"
-                counter = 0
-            elif len(list[i]) == 0:  # blank character adds 1
-                counter += 1
-                if counter >= self.word_space_length_min:
-                    listascii += " "
-                    counter = 0
+                    self.beep_duration_history.append(counter)
+                    self.beep_duration_history = self.beep_duration_history[-self.keep_number_of_chunks:]
+                    counter = 1
+                    sounding = False
 
         listascii = listascii.split(" ")
         stringout = ""
