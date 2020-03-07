@@ -28,7 +28,7 @@ def smooth_array(array, window_len=11, window='hanning'):
     smoothed_array = numpy.convolve(
         window_array/window_array.sum(), s, mode='valid')
 
-    # adjust the array length    
+    # adjust the array length
     smoothed_array = smoothed_array[int(window_len/2-1):-int(window_len/2)]
 
     return smoothed_array

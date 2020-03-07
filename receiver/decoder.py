@@ -147,7 +147,8 @@ class MorseDecoder:
             raise ValueError(
                 "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
-        s = numpy.r_[array[window_len-1:0:-1], array, array[-2:-window_len-1:-1]]
+        s = numpy.r_[array[window_len-1:0:-1],
+                     array, array[-2:-window_len-1:-1]]
 
         if window == 'flat':  # moving average
             window_array = numpy.ones(window_len, 'd')
@@ -157,11 +158,10 @@ class MorseDecoder:
         smoothed_array = numpy.convolve(
             window_array/window_array.sum(), s, mode='valid')
 
-        # adjust the array length    
+        # adjust the array length
         smoothed_array = smoothed_array[int(window_len/2-1):-int(window_len/2)]
 
         return smoothed_array
-
 
     def decode(self, morse_decoder_queue):
         sound_started = False
@@ -292,7 +292,7 @@ class MorseDecoder:
 
         snr = self.signaltonoise(self.graph_indata, 0, 0)
 
-        fig, axs = plt.subplots(6)
+        fig, axs = plt.subplots(7)
         fig.set_size_inches(20, 18)
         # fig.suptitle('graph PLOT')
         axs[0].set_title("Unpacked input bytes (SNR={:3.4f})".format(snr))
@@ -301,6 +301,7 @@ class MorseDecoder:
         axs[3].set_title("Sound level")
         axs[4].set_title("Sound sequence")
         axs[5].set_title("Sound sequence smoothed")
+        axs[6].set_title("Sound sequence restored")
         axs[3].set_ylim(ymin=0, auto=True)
         axs[4].set_ylim(ymin=0, ymax=1.5)
 
@@ -315,7 +316,12 @@ class MorseDecoder:
                     linewidth=line_width, color=lines_color)
         axs[4].plot(self.graph_sound_sequence,
                     linewidth=line_width, color=lines_color)
-        axs[5].plot(self.smooth_array(numpy.array(self.graph_sound_sequence, dtype=numpy.float64), window_len=10, window='blackman'),
+        smoothed_array = self.smooth_array(numpy.array(
+            self.graph_sound_sequence, dtype=numpy.float64), window_len=10, window='blackman')
+        axs[5].plot(smoothed_array,
+                    linewidth=line_width, color=lines_color)
+        restored_array = numpy.around(smoothed_array).astype(int)
+        axs[6].plot(restored_array,
                     linewidth=line_width, color=lines_color)
 
         horizontal_lines_width = 0.2
