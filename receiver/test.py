@@ -54,7 +54,7 @@ def smooth_test():
     axs[1].axhline(0.5, color='r', linestyle='dotted')
 
     axs[2].set_title("Restored array")
-    axs[2].plot(restored_array)
+    axs[2].bar(x=numpy.arange(len(restored_array)), height=restored_array, align='edge', width=1)
 
     plt.ion()
     fig.show()

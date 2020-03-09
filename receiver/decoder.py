@@ -33,11 +33,11 @@ class MorseDecoder:
     SNR = 0.7
     THRESHOLD_LOW_LIMIT = 50
 
-    smooth_window_len = 5
-    smooth_window_type = 'flat'
+    smooth_window_len = 6
+    smooth_window_type = 'blackman'
 
-    wpm = 19
-    wpm_variance = 30  # percent
+    wpm = 20
+    wpm_variance = 25  # percent
 
     frequency = 650
     frequency_auto_tune = True
@@ -93,13 +93,15 @@ class MorseDecoder:
                        ".": ".-.-.-", ",": "--..--", "!": "-.-.--", "'": ".----."}
 
     graph_is_saving = False
-    graph_save_sec = 0.2
+    graph_save_sec = 2
     graph_sound_data = []
     graph_indata = None
     graph_fft_data = None
     graph_frequency_data = []
     graph_sound_level_data = []
     graph_sound_sequence = []
+    graph_sound_sequence_smoothed = []
+    graph_sound_sequence_restored = []
     graph_sound_level_autotune = []
     graph_frequency_autotune_min = []
     graph_frequency_autotune_max = []
@@ -280,6 +282,8 @@ class MorseDecoder:
         self.graph_frequency_data = []
         self.graph_sound_level_data = []
         self.graph_sound_sequence = []
+        self.graph_sound_sequence_smoothed = []
+        self.graph_sound_sequence_restored = []
         self.graph_sound_level_autotune = []
         self.graph_frequency_autotune_min = []
         self.graph_frequency_autotune_max = []
@@ -305,7 +309,7 @@ class MorseDecoder:
         axs[5].set_title("Sound sequence smoothed")
         axs[6].set_title("Sound sequence restored")
         axs[3].set_ylim(ymin=0, auto=True)
-        axs[4].set_ylim(ymin=0, ymax=1.5)
+        # axs[4].set_ylim(ymin=0, ymax=1.5)
 
         lines_color = 'r'
         line_width = 0.5
@@ -316,15 +320,16 @@ class MorseDecoder:
                     linewidth=line_width, color=lines_color)
         axs[3].plot(self.graph_sound_level_data,
                     linewidth=line_width, color=lines_color)
-        axs[4].plot(self.graph_sound_sequence,
-                    linewidth=line_width, color=lines_color)
-        smoothed_array = self.smooth_array(numpy.array(
+        axs[4].bar(x=numpy.arange(len(self.graph_sound_sequence)),
+                   height=self.graph_sound_sequence, align='edge', width=1, color=lines_color)
+        self.graph_sound_sequence_smoothed = self.smooth_array(numpy.array(
             self.graph_sound_sequence, dtype=numpy.float64), window_len=self.smooth_window_len, window_type=self.smooth_window_type)
-        axs[5].plot(smoothed_array,
+        axs[5].plot(self.graph_sound_sequence_smoothed,
                     linewidth=line_width, color=lines_color)
-        restored_array = numpy.around(smoothed_array).astype(int)
-        axs[6].plot(restored_array,
-                    linewidth=line_width, color=lines_color)
+        self.graph_sound_sequence_restored = numpy.around(
+            self.graph_sound_sequence_smoothed).astype(int)
+        axs[6].bar(x=numpy.arange(len(self.graph_sound_sequence_restored)),
+                   height=self.graph_sound_sequence_restored, align='edge', width=1, color=lines_color)
 
         horizontal_lines_width = 0.2
         horizontal_lines_color = 'b'
@@ -334,6 +339,8 @@ class MorseDecoder:
                     color=horizontal_lines_color)
         axs[3].plot(self.graph_sound_level_autotune,
                     linewidth=horizontal_lines_width, color=horizontal_lines_color)
+        axs[5].axhline(0.5, linewidth=horizontal_lines_width,
+                       color=horizontal_lines_color, linestyle='dotted')
 
         if self.graph_save_sec <= 1:
             vertical_lines_width = 0.2
@@ -359,24 +366,27 @@ class MorseDecoder:
         # numpy.savetxt('data.csv', numpy.array(
         #     self.graph_sound_sequence, dtype=numpy.float64), fmt='%d', delimiter=',')
 
-    def decode_sequence(self, list):
+    def decode_sequence(self, morse_sequence):
         # print(list)
 
         line_breakers = ".?!"
         last_character = ""
 
         # smooth array
-        list = self.smooth_array(numpy.array(
-            list, dtype=numpy.float64), window_len=self.smooth_window_len, window_type=self.smooth_window_type)
+        morse_sequence_smoothed = self.smooth_array(numpy.array(
+            morse_sequence, dtype=numpy.float64), window_len=self.smooth_window_len, window_type=self.smooth_window_type)
 
         # restore array
-        list = numpy.around(list).astype(int)
+        # morse_sequence_restored = numpy.around(
+        #     morse_sequence_smoothed).astype(int)
+
+        morse_sequence_restored = morse_sequence
 
         counter = 0
         sounding = False
         listascii = ""
-        for i in range(len(list)):
-            if list[i] == 1:
+        for i in range(len(morse_sequence_restored)):
+            if morse_sequence_restored[i] == 1:
                 if sounding:
                     counter += 1
                 else:  # a silence ended
@@ -384,7 +394,7 @@ class MorseDecoder:
                         None  # listascii += ""
                     elif counter >= self.letter_space_length_min and counter <= self.letter_space_length_max:
                         listascii += " "
- 
+
                     counter = 1
                     sounding = True
             else:
