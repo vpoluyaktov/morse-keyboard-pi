@@ -43,7 +43,7 @@ class MorseDecoder:
     frequency_auto_tune = True
     frequency_variance = 20  # percent
 
-    FREQUENCY_LOW_LIMIT = 400
+    FREQUENCY_LOW_LIMIT = 250
     FREQUENCY_HIGH_LIMIT = 1000
     frequency_min = int(frequency * ((100 - frequency_variance) / 100))
     frequency_max = int(frequency * ((100 + frequency_variance) / 100))
@@ -372,15 +372,15 @@ class MorseDecoder:
         line_breakers = ".?!"
         last_character = ""
 
+        morse_sequence = numpy.array(morse_sequence)
+
         # smooth array
         morse_sequence_smoothed = self.smooth_array(numpy.array(
             morse_sequence, dtype=numpy.float64), window_len=self.smooth_window_len, window_type=self.smooth_window_type)
 
         # restore array
-        # morse_sequence_restored = numpy.around(
-        #     morse_sequence_smoothed).astype(int)
-
-        morse_sequence_restored = morse_sequence
+        morse_sequence_restored = numpy.around(
+            morse_sequence_smoothed).astype(int)
 
         counter = 0
         sounding = False
@@ -400,7 +400,7 @@ class MorseDecoder:
             else:
                 if not sounding:
                     counter += 1
-                    if counter >= self.word_space_length_min:
+                    if counter >= self.word_space_length_min - 1: # -1 - a correction for the smooth function
                         listascii += " /"
                 else:  # a beep ended, let's decide is it dit or dah
                     if counter >= self.dit_length_min and counter <= self.dit_length_max:
@@ -430,7 +430,7 @@ class MorseDecoder:
                     last_character = "_"
                     stringout += last_character
                 if last_character in line_breakers:
-                    stringout += "\n"
+                    None # stringout += "\n"
 
         # print(stringout, end = '', flush = True)
         self.output_buffer += stringout
