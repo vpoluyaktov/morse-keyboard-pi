@@ -37,7 +37,7 @@ class MorseDecoder:
     smooth_window_type = 'blackman'
 
     wpm = 20
-    wpm_variance = 25  # percent
+    wpm_variance = 30  # percent
 
     frequency = 650
     frequency_auto_tune = True
@@ -50,7 +50,6 @@ class MorseDecoder:
 
     RATE = 44100  # frames per a second
     CHUNK_LENGTH_MS = 10
-    ALLOWANCE = 3
 
     chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
     window = numpy.blackman(chunk)
@@ -62,29 +61,6 @@ class MorseDecoder:
 
     keep_number_of_chunks = int(1000 / CHUNK_LENGTH_MS * keep_history_sec)
 
-    # morse code timing
-    dit_length_ms = int(1200 / wpm)
-    dah_length_ms = dit_length_ms * 3
-    char_space_length_ms = dit_length_ms
-    letter_space_length_ms = dit_length_ms * 3
-    word_space_length_ms = dit_length_ms * 7
-
-    # morse code timing variances in frames
-    dit_length_min = int(
-        dit_length_ms * ((100 - wpm_variance) / 100) / CHUNK_LENGTH_MS)
-    dit_length_max = int(
-        dit_length_ms * ((100 + wpm_variance) / 100) / CHUNK_LENGTH_MS)
-    dah_length_min = dit_length_min * 3
-    dah_length_max = dit_length_max * 3
-    char_space_length_min = dit_length_min
-    char_space_length_max = dit_length_max
-    letter_space_length_min = dit_length_min * 3
-    letter_space_length_max = dit_length_max * 3
-    word_space_length_min = dit_length_min * 7
-    word_space_length_max = dit_length_max * 7
-
-    cutoff_threshold = letter_space_length_min  # process letter by letter
-
     LETTER_TO_MORSE = {" ": "/", "A": ".-", "B": "-...", "C": "-.-.", "D": "-..", "E": ".", "F": "..-.", "G": "--.", "H": "....",
                        "I": "..", "J": ".---", "K": "-.-", "L": ".-..", "M": "--", "N": "-.", "O": "---", "P": ".--.",
                        "Q": "--.-", "R": ".-.", "S": "...", "T": "-", "U": "..-", "V": "...-", "W": ".--", "X": "-..-",
@@ -92,22 +68,53 @@ class MorseDecoder:
                        "6": "-....", "7": "--...", "8": "---..", "9": "----.", "0": "-----", "?": "..--..",
                        ".": ".-.-.-", ",": "--..--", "!": "-.-.--", "'": ".----."}
 
-    graph_is_saving = False
-    graph_save_sec = 2
-    graph_sound_data = []
-    graph_indata = None
-    graph_fft_data = None
-    graph_frequency_data = []
-    graph_sound_level_data = []
-    graph_sound_sequence = []
-    graph_sound_sequence_smoothed = []
-    graph_sound_sequence_restored = []
-    graph_sound_level_autotune = []
-    graph_frequency_autotune_min = []
-    graph_frequency_autotune_max = []
-    graph_number_of_chunks_collected = 0
 
-    output_buffer = ""
+    def __init__(self):
+        self.calculate_timings()
+
+        self.graph_is_saving = False
+        self.graph_save_sec = 2
+        self.graph_sound_data = []
+        self.graph_indata = None
+        self.graph_fft_data = None
+        self.graph_frequency_data = []
+        self.graph_sound_level_data = []
+        self.graph_sound_sequence = []
+        self.graph_sound_sequence_smoothed = []
+        self.graph_sound_sequence_restored = []
+        self.graph_sound_level_autotune = []
+        self.graph_frequency_autotune_min = []
+        self.graph_frequency_autotune_max = []
+        self.graph_number_of_chunks_collected = 0
+
+        self.output_buffer = ""
+
+
+
+    def calculate_timings(self):
+
+        # morse code timing
+        self.dit_length_ms = int(1200 / self.wpm)
+        self.dah_length_ms = self.dit_length_ms * 3
+        self.char_space_length_ms = self.dit_length_ms
+        self.letter_space_length_ms = self.dit_length_ms * 3
+        self.word_space_length_ms = self.dit_length_ms * 7
+
+        # morse code timing variances in frames
+        self.dit_length_min = int(
+            self.dit_length_ms * ((100 - self.wpm_variance) / 100) / self.CHUNK_LENGTH_MS)
+        self.dit_length_max = int(
+            self.dit_length_ms * ((100 + self.wpm_variance) / 100) / self.CHUNK_LENGTH_MS)
+        self.dah_length_min = self.dit_length_min * 3
+        self.dah_length_max = self.dit_length_max * 3
+        self.char_space_length_min = self.dit_length_min
+        self.char_space_length_max = self.dit_length_max
+        self.letter_space_length_min = self.dit_length_min * 3
+        self.letter_space_length_max = self.dit_length_max * 3
+        self.word_space_length_min = self.dit_length_min * 7
+        self.word_space_length_max = self.dit_length_max * 7
+
+        self.cutoff_threshold = self.letter_space_length_min  # process letter by letter
 
     def is_silent(self, sound_level):
         "Returns 'True' if below the 'silent' threshold"
@@ -363,8 +370,8 @@ class MorseDecoder:
                             top=0.95, bottom=0.05, wspace=0.2, hspace=0.4)
 
         fig.savefig("debug_plot.png")
-        # numpy.savetxt('data.csv', numpy.array(
-        #     self.graph_sound_sequence, dtype=numpy.float64), fmt='%d', delimiter=',')
+        numpy.savetxt('data.csv', numpy.array(
+            self.beep_duration_history, dtype=numpy.int16), fmt='%d', delimiter=',')
 
     def decode_sequence(self, morse_sequence):
         # print(list)
@@ -400,7 +407,7 @@ class MorseDecoder:
             else:
                 if not sounding:
                     counter += 1
-                    if counter >= self.word_space_length_min - 1: # -1 - a correction for the smooth function
+                    if counter >= self.word_space_length_min - 1:  # -1 - a correction for the smooth function
                         listascii += " /"
                 else:  # a beep ended, let's decide is it dit or dah
                     if counter >= self.dit_length_min and counter <= self.dit_length_max:
@@ -409,7 +416,7 @@ class MorseDecoder:
                         listascii += "-"
 
                     self.beep_duration_history.append(counter)
-                    self.beep_duration_history = self.beep_duration_history[-self.keep_number_of_chunks:]
+                    self.beep_duration_history = self.beep_duration_history[-50:]
                     counter = 1
                     sounding = False
 
@@ -430,7 +437,7 @@ class MorseDecoder:
                     last_character = "_"
                     stringout += last_character
                 if last_character in line_breakers:
-                    None # stringout += "\n"
+                    None  # stringout += "\n"
 
         # print(stringout, end = '', flush = True)
         self.output_buffer += stringout
@@ -457,25 +464,76 @@ class MorseDecoder:
 
         return most_common_frequency
 
-    def get_wps(self):
+    def get_wpm(self):
 
-        real_wps = 0
-        dit_duration = 0
-        dash_duration = 0
+        wpm_reliable = False
 
-        if len(self.beep_duration_history) > 0:
-            histogram = Counter(self.beep_duration_history)
-            beep_durations = histogram.most_common(2)
-            if (len(beep_durations)) == 2:
-                (dit_duration, count) = beep_durations[0]
-                (dash_duration, count) = beep_durations[1]
+        if len(self.beep_duration_history) < 50:
+            return "|{:2d}|".format(self.wpm)
 
-                if dit_duration > dash_duration:
-                    tmp_duration = dit_duration
-                    dit_duration = dash_duration
-                    dash_duration = tmp_duration
+        histogram = Counter(self.beep_duration_history)
 
-        return (dit_duration, dash_duration)
+        # sort and transpose the histogram
+        beep_durations = sorted(histogram.items())
+        beep_durations = numpy.array(beep_durations)
+        beep_durations = beep_durations.transpose()
+
+        x = beep_durations[0]
+        y = beep_durations[1]
+
+        # tolerance = 1
+        # diffs = numpy.diff(y)
+        # extrema = numpy.where(diffs > tolerance)[0] + 1
+        # peaks = extrema
+
+        all_peak_indexes = numpy.where(
+            (y[1:-1] > y[0:-2]) * (y[1:-1] > y[2:]))[0] + 1
+
+        if (len(all_peak_indexes)) < 2:
+            return "~{:2d}?".format(self.wpm)     
+
+        # get two largest peaks
+        peak_values = y[all_peak_indexes]
+        largest_peak_index = all_peak_indexes[numpy.where(
+            peak_values == numpy.amax(peak_values))[0]][0]
+        peak_values[numpy.where(peak_values == numpy.amax(peak_values))[0][0]] = 0
+        second_peak_index = all_peak_indexes[numpy.where(
+            peak_values == numpy.amax(peak_values))[0]][0]
+        largest_peak_indexes = numpy.array(
+            [largest_peak_index, second_peak_index])
+
+        if x[largest_peak_index] < x[second_peak_index]:
+            dit_duration = x[largest_peak_index]
+            dah_duration = x[second_peak_index]
+        else:
+            dit_duration = x[second_peak_index]
+            dah_duration = x[largest_peak_index]
+
+        if dit_duration > 0:
+            dah_dot_ratio = dah_duration / dit_duration
+        else:
+            dah_dot_ratio = 0
+
+        dah_dot_ratio_ideal = 3
+        dah_dot_ratio_variance = 10  # persent
+
+        # check beep length calculation reliability
+       
+        if dah_dot_ratio >= dah_dot_ratio_ideal * (100 - dah_dot_ratio_variance) / 100 \
+                and dah_dot_ratio <= dah_dot_ratio_ideal * (100 + dah_dot_ratio_variance) / 100:
+            wpm_reliable = True
+
+        # calculate and update WPM
+        if wpm_reliable:
+            dit_length_ms = dit_duration * self.CHUNK_LENGTH_MS
+            dah_length_ms = dah_duration * self.CHUNK_LENGTH_MS
+
+            self.wpm = int(round(1200 / dit_length_ms, 0))
+            # more accurate ?
+            self.wpm = int(round(1200 / dah_length_ms * 3, 0))
+            self.calculate_timings()
+
+        return "[{:2d}]".format(self.wpm)
 
     def get_sound_level(self):
         sound_level = 0

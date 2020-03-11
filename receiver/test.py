@@ -2,6 +2,12 @@ import numpy
 import matplotlib.pyplot as plt
 
 
+RATE = 44100  # frames per a second
+CHUNK_LENGTH_MS = 10
+ALLOWANCE = 3
+
+chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
+
 def smooth_array(array, window_len=11, window='hanning'):
 
     if array.ndim != 1:

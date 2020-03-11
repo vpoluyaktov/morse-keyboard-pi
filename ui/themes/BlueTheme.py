@@ -15,14 +15,12 @@ class BlueTheme(ThemeManagers.ThemeManager):
         ('BLACK_RED', curses.COLOR_BLACK, curses.COLOR_RED),
         ('BLACK_GREEN', curses.COLOR_BLACK, curses.COLOR_GREEN),
         ('BLACK_YELLOW', curses.COLOR_BLACK, curses.COLOR_YELLOW),
-        ('GREEN_BLUE', curses.COLOR_GREEN, curses.COLOR_BLUE),
-        ('RED_BLUE', curses.COLOR_RED, curses.COLOR_BLUE),
     )
 
     default_colors = {
         'DEFAULT': 'WHITE_BLUE',
         'FORMDEFAULT': 'WHITE_BLUE',
-        'NO_EDIT': 'BLACK_BLUE',
+        'NO_EDIT': 'RED_BLUE',
         'STANDOUT': 'CYAN_BLUE',
         'CURSOR': 'WHITE_BLUE',
         'CURSOR_INVERSE': 'BLUE_WHITE',
@@ -31,7 +29,7 @@ class BlueTheme(ThemeManagers.ThemeManager):
         'CONTROL': 'YELLOW_BLUE',
         'IMPORTANT': 'RED_BLUE',
         'SAFE': 'GREEN_BLUE',
-        'WARNING': 'YELLOW_WHITE',
+        'WARNING': 'YELLOW_BLUE',
         'DANGER': 'RED_BLUE',
         'CRITICAL': 'RED_BLUE',
         'GOOD': 'GREEN_BLUE',
