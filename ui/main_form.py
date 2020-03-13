@@ -70,9 +70,9 @@ class MainForm(npyscreen.FormWithMenus):
 
         frequency = self.morse_decoder.get_frequency()
         wpm = self.morse_decoder.get_wpm()
-        (sound_level, threshold) = self.morse_decoder.get_sound_level()
-        self.receiver_box.footer = "Queue: {:3d} WPM: {:s} Level: {:4d}/{:4d} Freq: {:3.0f} KHz"\
-            .format(self.morse_decoder_queue.qsize(), wpm, sound_level, threshold, frequency)
+        sound_level = self.morse_decoder.get_sound_level()
+        self.receiver_box.footer = "Queue: {:3d}    Speed: {:s} wpm    Level: {:4d}    Freq: {:3.0f} KHz"\
+            .format(self.morse_decoder_queue.qsize(), wpm, sound_level, frequency)
         self.receiver_box.display()
 
         

@@ -35,13 +35,14 @@ class MorseDecoder:
 
     smooth_window_len = 6
     smooth_window_type = 'blackman'
+    smooth_cut_off_offset = 0.0
 
     wpm = 20
-    wpm_variance = 30  # percent
+    wpm_variance = 35  # percent
 
     frequency = 650
     frequency_auto_tune = True
-    frequency_variance = 20  # percent
+    frequency_variance = 10  # percent
 
     FREQUENCY_LOW_LIMIT = 250
     FREQUENCY_HIGH_LIMIT = 1000
@@ -68,7 +69,6 @@ class MorseDecoder:
                        "6": "-....", "7": "--...", "8": "---..", "9": "----.", "0": "-----", "?": "..--..",
                        ".": ".-.-.-", ",": "--..--", "!": "-.-.--", "'": ".----."}
 
-
     def __init__(self):
         self.calculate_timings()
 
@@ -89,15 +89,14 @@ class MorseDecoder:
 
         self.output_buffer = ""
 
-
-
     def calculate_timings(self):
 
         # morse code timing
+        self.dah_dot_ratio = 3
         self.dit_length_ms = int(1200 / self.wpm)
-        self.dah_length_ms = self.dit_length_ms * 3
+        self.dah_length_ms = self.dit_length_ms * self.dah_dot_ratio
         self.char_space_length_ms = self.dit_length_ms
-        self.letter_space_length_ms = self.dit_length_ms * 3
+        self.letter_space_length_ms = self.dit_length_ms * self.dah_dot_ratio
         self.word_space_length_ms = self.dit_length_ms * 7
 
         # morse code timing variances in frames
@@ -143,14 +142,13 @@ class MorseDecoder:
             r.append(int(i * times))
         return bytes(r, 'utf-8')
 
-    def smooth_array(self, array, window_len=11, window_type='hanning'):
+    def smooth_array(self, array, window_len=5, window_type='hanning'):
 
         if array.ndim != 1:
             raise ValueError("smooth only accepts 1 dimension arrays.")
 
         if array.size < window_len:
-            raise ValueError(
-                "Input vector needs to be bigger than window size.")
+            return array
 
         if window_len < 3:
             return array
@@ -255,7 +253,7 @@ class MorseDecoder:
                 self.graph_sound_sequence.append(1)
                 # check if this is a new character started
                 if num_silent >= self.letter_space_length_min and sound_started and syncronized:
-                    self.decode_sequence(sound_sequence)
+                    self.decode_morse_sequence(sound_sequence)
                     num_silent = 0
                     sound_sequence = []
                 if syncronized:
@@ -274,7 +272,7 @@ class MorseDecoder:
 
             if num_silent >= self.word_space_length_min and sound_started:
                 if sound_started and syncronized:
-                    self.decode_sequence(sound_sequence)
+                    self.decode_morse_sequence(sound_sequence)
                 num_silent = 0
                 sound_sequence = []
                 sound_started = False
@@ -306,7 +304,7 @@ class MorseDecoder:
         snr = self.signaltonoise(self.graph_indata, 0, 0)
 
         fig, axs = plt.subplots(7)
-        fig.set_size_inches(20, 18)
+        fig.set_size_inches(32, 18)
         # fig.suptitle('graph PLOT')
         axs[0].set_title("Unpacked input bytes (SNR={:3.4f})".format(snr))
         axs[1].set_title("Square of FFT data")
@@ -334,7 +332,7 @@ class MorseDecoder:
         axs[5].plot(self.graph_sound_sequence_smoothed,
                     linewidth=line_width, color=lines_color)
         self.graph_sound_sequence_restored = numpy.around(
-            self.graph_sound_sequence_smoothed).astype(int)
+            self.graph_sound_sequence_smoothed - self.smooth_cut_off_offset).astype(int)
         axs[6].bar(x=numpy.arange(len(self.graph_sound_sequence_restored)),
                    height=self.graph_sound_sequence_restored, align='edge', width=1, color=lines_color)
 
@@ -346,7 +344,7 @@ class MorseDecoder:
                     color=horizontal_lines_color)
         axs[3].plot(self.graph_sound_level_autotune,
                     linewidth=horizontal_lines_width, color=horizontal_lines_color)
-        axs[5].axhline(0.5, linewidth=horizontal_lines_width,
+        axs[5].axhline(0.5 + self.smooth_cut_off_offset, linewidth=horizontal_lines_width,
                        color=horizontal_lines_color, linestyle='dotted')
 
         if self.graph_save_sec <= 1:
@@ -373,7 +371,7 @@ class MorseDecoder:
         numpy.savetxt('data.csv', numpy.array(
             self.beep_duration_history, dtype=numpy.int16), fmt='%d', delimiter=',')
 
-    def decode_sequence(self, morse_sequence):
+    def decode_morse_sequence(self, morse_sequence):
         # print(list)
 
         line_breakers = ".?!"
@@ -387,7 +385,7 @@ class MorseDecoder:
 
         # restore array
         morse_sequence_restored = numpy.around(
-            morse_sequence_smoothed).astype(int)
+            morse_sequence_smoothed - self.smooth_cut_off_offset).astype(int)
 
         counter = 0
         sounding = False
@@ -481,22 +479,23 @@ class MorseDecoder:
         x = beep_durations[0]
         y = beep_durations[1]
 
-        # tolerance = 1
-        # diffs = numpy.diff(y)
-        # extrema = numpy.where(diffs > tolerance)[0] + 1
-        # peaks = extrema
+        tolerance = 0.75
+        diffs = numpy.diff(y)
+        extrema = numpy.where(diffs > tolerance)[0] + 1
+        all_peak_indexes = numpy.append(extrema, 0)
 
-        all_peak_indexes = numpy.where(
-            (y[1:-1] > y[0:-2]) * (y[1:-1] > y[2:]))[0] + 1
+        # all_peak_indexes = numpy.where(
+        #     (y[1:-1] > y[0:-2]) * (y[1:-1] > y[2:]))[0] + 1
 
         if (len(all_peak_indexes)) < 2:
-            return "~{:2d}?".format(self.wpm)     
+            return "~{:2d}~".format(self.wpm)
 
         # get two largest peaks
         peak_values = y[all_peak_indexes]
         largest_peak_index = all_peak_indexes[numpy.where(
             peak_values == numpy.amax(peak_values))[0]][0]
-        peak_values[numpy.where(peak_values == numpy.amax(peak_values))[0][0]] = 0
+        peak_values[numpy.where(
+            peak_values == numpy.amax(peak_values))[0][0]] = 0
         second_peak_index = all_peak_indexes[numpy.where(
             peak_values == numpy.amax(peak_values))[0]][0]
         largest_peak_indexes = numpy.array(
@@ -514,13 +513,12 @@ class MorseDecoder:
         else:
             dah_dot_ratio = 0
 
-        dah_dot_ratio_ideal = 3
-        dah_dot_ratio_variance = 10  # persent
+
 
         # check beep length calculation reliability
-       
-        if dah_dot_ratio >= dah_dot_ratio_ideal * (100 - dah_dot_ratio_variance) / 100 \
-                and dah_dot_ratio <= dah_dot_ratio_ideal * (100 + dah_dot_ratio_variance) / 100:
+        dah_dot_ratio_variance = 15 # percent
+        if dah_dot_ratio >= dah_dot_ratio * (100 - dah_dot_ratio_variance) / 100 \
+                and dah_dot_ratio <= dah_dot_ratio * (100 + dah_dot_ratio_variance) / 100:
             wpm_reliable = True
 
         # calculate and update WPM
@@ -528,12 +526,17 @@ class MorseDecoder:
             dit_length_ms = dit_duration * self.CHUNK_LENGTH_MS
             dah_length_ms = dah_duration * self.CHUNK_LENGTH_MS
 
-            self.wpm = int(round(1200 / dit_length_ms, 0))
+            wpm = int(round(1200 / dit_length_ms, 0))
             # more accurate ?
-            self.wpm = int(round(1200 / dah_length_ms * 3, 0))
-            self.calculate_timings()
+            wpm = int(round(1200 / dah_length_ms * 3, 0))
 
-        return "[{:2d}]".format(self.wpm)
+            if wpm >= 5 and wpm <= 35:
+                self.wpm = wpm
+                self.calculate_timings()
+
+            return "[{:2d}]".format(self.wpm)
+        else:
+            return "?{:2d}?".format(self.wpm)
 
     def get_sound_level(self):
         sound_level = 0
@@ -545,7 +548,7 @@ class MorseDecoder:
             if self.sound_level_autotune and sound_level >= self.THRESHOLD_LOW_LIMIT:
                 self.threshold = int(sound_level * self.SNR)
 
-        return (sound_level, self.threshold)
+        return sound_level
 
 
 if __name__ == "__main__":
