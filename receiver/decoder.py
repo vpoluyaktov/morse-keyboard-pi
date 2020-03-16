@@ -44,7 +44,7 @@ class MorseDecoder:
     frequency_auto_tune = True
     frequency_variance = 10  # percent
 
-    FREQUENCY_LOW_LIMIT = 250
+    FREQUENCY_LOW_LIMIT = 300
     FREQUENCY_HIGH_LIMIT = 1000
     frequency_min = int(frequency * ((100 - frequency_variance) / 100))
     frequency_max = int(frequency * ((100 + frequency_variance) / 100))
@@ -85,14 +85,19 @@ class MorseDecoder:
         self.graph_sound_level_autotune = []
         self.graph_frequency_autotune_min = []
         self.graph_frequency_autotune_max = []
+        self.graph_beep_duration = numpy.zeros(shape=(2, 1))
+        self.graph_all_peak_indexes = []
+        self.graph_largest_peak_indexes = []
         self.graph_number_of_chunks_collected = 0
 
         self.output_buffer = ""
+        self.last_returned_buffer = ""
 
     def calculate_timings(self):
 
         # morse code timing
         self.dah_dot_ratio = 3
+        self.dah_dit_ratio_variance = 15  # percent
         self.dit_length_ms = int(1200 / self.wpm)
         self.dah_length_ms = self.dit_length_ms * self.dah_dot_ratio
         self.char_space_length_ms = self.dit_length_ms
@@ -183,7 +188,7 @@ class MorseDecoder:
             sound_data = morse_decoder_queue.get()
 
             if self.graph_is_saving:
-                if self.graph_number_of_chunks_collected > int(self.graph_save_sec / self.CHUNK_LENGTH_MS * 1000 * 2):
+                if self.graph_number_of_chunks_collected >= int(self.graph_save_sec / self.CHUNK_LENGTH_MS * 1000):
                     self.graph_is_saving = False
                     self.save_plot()
                 else:
@@ -280,7 +285,6 @@ class MorseDecoder:
 
     def generate_plot(self):
 
-        self.graph_save_sec = 2
         self.graph_sound_data = []
         self.graph_indata = numpy.empty((0, 3), float)
         self.graph_fft_data = numpy.empty((0, 3), float)
@@ -303,7 +307,7 @@ class MorseDecoder:
 
         snr = self.signaltonoise(self.graph_indata, 0, 0)
 
-        fig, axs = plt.subplots(7)
+        fig, axs = plt.subplots(8)
         fig.set_size_inches(32, 18)
         # fig.suptitle('graph PLOT')
         axs[0].set_title("Unpacked input bytes (SNR={:3.4f})".format(snr))
@@ -313,36 +317,47 @@ class MorseDecoder:
         axs[4].set_title("Sound sequence")
         axs[5].set_title("Sound sequence smoothed")
         axs[6].set_title("Sound sequence restored")
-        axs[3].set_ylim(ymin=0, auto=True)
-        # axs[4].set_ylim(ymin=0, ymax=1.5)
+        axs[7].set_title("Beep Durations")
+        #axs[3].set_ylim(ymin=0, auto=True)
+        #axs[0].grid(color='r', linestyle='-', linewidth=0.5)
 
         lines_color = 'r'
         line_width = 0.5
-        axs[0].plot(self.graph_indata, linewidth=line_width, color=lines_color)
-        axs[1].plot(self.graph_fft_data, linewidth=line_width,
+        axs[0].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_indata)), self.graph_indata,
+                    linewidth=line_width, color=lines_color)
+        axs[1].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_fft_data)), self.graph_fft_data, linewidth=line_width,
                     color=lines_color)
-        axs[2].plot(self.graph_frequency_data,
+        axs[2].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_data)), self.graph_frequency_data,
                     linewidth=line_width, color=lines_color)
-        axs[3].plot(self.graph_sound_level_data,
+        axs[3].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_level_data)), self.graph_sound_level_data,
                     linewidth=line_width, color=lines_color)
-        axs[4].bar(x=numpy.arange(len(self.graph_sound_sequence)),
-                   height=self.graph_sound_sequence, align='edge', width=1, color=lines_color)
+        axs[4].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_sequence)),
+                    self.graph_sound_sequence, linewidth=line_width * 2, color=lines_color)
         self.graph_sound_sequence_smoothed = self.smooth_array(numpy.array(
             self.graph_sound_sequence, dtype=numpy.float64), window_len=self.smooth_window_len, window_type=self.smooth_window_type)
-        axs[5].plot(self.graph_sound_sequence_smoothed,
+        axs[5].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_sequence_smoothed)), self.graph_sound_sequence_smoothed,
                     linewidth=line_width, color=lines_color)
         self.graph_sound_sequence_restored = numpy.around(
             self.graph_sound_sequence_smoothed - self.smooth_cut_off_offset).astype(int)
-        axs[6].bar(x=numpy.arange(len(self.graph_sound_sequence_restored)),
-                   height=self.graph_sound_sequence_restored, align='edge', width=1, color=lines_color)
+        axs[6].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_sequence_restored)),
+                    self.graph_sound_sequence_restored, linewidth=line_width * 2, color=lines_color)
+        axs[7].plot(self.graph_beep_duration[0], self.graph_beep_duration[1],
+                    linewidth=line_width * 2, color=lines_color)
+        axs[7].plot(self.graph_beep_duration[0][self.graph_all_peak_indexes],
+                    self.graph_beep_duration[1][self.graph_all_peak_indexes], 'o')
+        axs[7].plot(self.graph_beep_duration[0][self.graph_largest_peak_indexes],
+                    self.graph_beep_duration[1][self.graph_largest_peak_indexes], 'o')
 
-        horizontal_lines_width = 0.2
+        horizontal_lines_width = 0.5
         horizontal_lines_color = 'b'
-        axs[2].plot(self.graph_frequency_autotune_min, linewidth=horizontal_lines_width,
+        axs[2].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_autotune_min)),
+                    self.graph_frequency_autotune_min, linewidth=horizontal_lines_width,
                     color=horizontal_lines_color)
-        axs[2].plot(self.graph_frequency_autotune_max, linewidth=horizontal_lines_width,
+        axs[2].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_autotune_max)),
+                    self.graph_frequency_autotune_max, linewidth=horizontal_lines_width,
                     color=horizontal_lines_color)
-        axs[3].plot(self.graph_sound_level_autotune,
+        axs[3].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_level_autotune)),
+                    self.graph_sound_level_autotune,
                     linewidth=horizontal_lines_width, color=horizontal_lines_color)
         axs[5].axhline(0.5 + self.smooth_cut_off_offset, linewidth=horizontal_lines_width,
                        color=horizontal_lines_color, linestyle='dotted')
@@ -350,26 +365,19 @@ class MorseDecoder:
         if self.graph_save_sec <= 1:
             vertical_lines_width = 0.2
             vertical_lines_color = 'k'
-            for i in range(len(self.graph_sound_sequence)):
-                axs[0].axvline(
-                    i * self.chunk, linewidth=vertical_lines_width, color=vertical_lines_color)
-                axs[1].axvline(
-                    i * self.chunk / 2, linewidth=vertical_lines_width, color=vertical_lines_color)
-                axs[2].axvline(i, linewidth=vertical_lines_width,
-                               color=vertical_lines_color)
-                axs[3].axvline(i, linewidth=vertical_lines_width,
-                               color=vertical_lines_color)
-                axs[4].axvline(i, linewidth=vertical_lines_width,
-                               color=vertical_lines_color)
-                axs[5].axvline(i, linewidth=vertical_lines_width,
-                               color=vertical_lines_color)
+            vertical_marks = numpy.arange(
+                0, self.graph_save_sec + self.CHUNK_LENGTH_MS / 1000, self.CHUNK_LENGTH_MS / 1000)
+            for plot_index in range(0, 6+1):
+                for x in vertical_marks:
+                    axs[plot_index].axvline(x, linewidth=vertical_lines_width,
+                                            color=vertical_lines_color)
 
         fig.subplots_adjust(left=0.03, right=0.98,
                             top=0.95, bottom=0.05, wspace=0.2, hspace=0.4)
 
         fig.savefig("debug_plot.png")
-        numpy.savetxt('data.csv', numpy.array(
-            self.beep_duration_history, dtype=numpy.int16), fmt='%d', delimiter=',')
+        # numpy.savetxt('data.csv', numpy.array(
+        #     self.beep_duration_history, dtype=numpy.int16), fmt='%d', delimiter=',')
 
     def decode_morse_sequence(self, morse_sequence):
         # print(list)
@@ -386,6 +394,10 @@ class MorseDecoder:
         # restore array
         morse_sequence_restored = numpy.around(
             morse_sequence_smoothed - self.smooth_cut_off_offset).astype(int)
+        # correct the array after restore
+        morse_sequence_restored = numpy.delete(morse_sequence_restored, 0)
+        morse_sequence_restored = numpy.append(morse_sequence_restored, 0)
+
 
         counter = 0
         sounding = False
@@ -405,7 +417,7 @@ class MorseDecoder:
             else:
                 if not sounding:
                     counter += 1
-                    if counter >= self.word_space_length_min - 1:  # -1 - a correction for the smooth function
+                    if counter >= self.word_space_length_min:
                         listascii += " /"
                 else:  # a beep ended, let's decide is it dit or dah
                     if counter >= self.dit_length_min and counter <= self.dit_length_max:
@@ -441,9 +453,15 @@ class MorseDecoder:
         self.output_buffer += stringout
 
     def getBuffer(self):
-        buffer = self.output_buffer
-        self.output_buffer = ""
-        return buffer
+
+        buffer = ""
+
+        if self.output_buffer.strip() or self.last_returned_buffer.strip():
+            buffer = self.output_buffer
+            self.last_returned_buffer = self.output_buffer
+            self.output_buffer = ""
+        
+        return buffer    
 
     def get_frequency(self):
         most_common_frequency = 0
@@ -476,53 +494,78 @@ class MorseDecoder:
         beep_durations = numpy.array(beep_durations)
         beep_durations = beep_durations.transpose()
 
-        x = beep_durations[0]
-        y = beep_durations[1]
+        if self.graph_is_saving:
+            self.graph_beep_duration = beep_durations
+
+        durations = beep_durations[0]
+        counters = beep_durations[1]
 
         tolerance = 0.75
-        diffs = numpy.diff(y)
+        diffs = numpy.diff(counters)
         extrema = numpy.where(diffs > tolerance)[0] + 1
-        all_peak_indexes = numpy.append(extrema, 0)
+        peak_indexes = numpy.append(extrema, 0)
+        peak_counters = counters[peak_indexes]
+
+        if self.graph_is_saving:
+            self.graph_all_peak_indexes = peak_indexes
 
         # all_peak_indexes = numpy.where(
         #     (y[1:-1] > y[0:-2]) * (y[1:-1] > y[2:]))[0] + 1
 
-        if (len(all_peak_indexes)) < 2:
+        if (len(peak_indexes)) < 2:
             return "~{:2d}~".format(self.wpm)
 
-        # get two largest peaks
-        peak_values = y[all_peak_indexes]
-        largest_peak_index = all_peak_indexes[numpy.where(
-            peak_values == numpy.amax(peak_values))[0]][0]
-        peak_values[numpy.where(
-            peak_values == numpy.amax(peak_values))[0][0]] = 0
-        second_peak_index = all_peak_indexes[numpy.where(
-            peak_values == numpy.amax(peak_values))[0]][0]
-        largest_peak_indexes = numpy.array(
-            [largest_peak_index, second_peak_index])
+        # get largest peak
+        largest_peak_duration = 0 
+        largest_peak_index = peak_indexes[numpy.where(
+            peak_counters == numpy.amax(peak_counters))[0]][0]
+        largest_peak_duration = durations[largest_peak_index]
+        while largest_peak_duration < 3 and numpy.amax(peak_counters) > 0:  # remove too short beeps
+            # remove largest counter
+            peak_counters[numpy.where(
+                peak_counters == numpy.amax(peak_counters))[0][0]] = 0
+            largest_peak_index = peak_indexes[numpy.where(
+                peak_counters == numpy.amax(peak_counters))[0]][0]
+            largest_peak_duration = durations[largest_peak_index]
 
-        if x[largest_peak_index] < x[second_peak_index]:
-            dit_duration = x[largest_peak_index]
-            dah_duration = x[second_peak_index]
-        else:
-            dit_duration = x[second_peak_index]
-            dah_duration = x[largest_peak_index]
+        # try to find second peek so dah/dit ration ~= 3
+        # remove largest counter
+        peak_counters[numpy.where(
+            peak_counters == numpy.amax(peak_counters))[0][0]] = 0
+        second_peak_duration = 0     
+        while numpy.amax(peak_counters) > 0:    
+            second_peak_index = peak_indexes[numpy.where(
+                peak_counters == numpy.amax(peak_counters))[0]][0]
+            second_peak_duration = durations[second_peak_index]    
+            if largest_peak_duration < second_peak_duration:
+                dit_duration = largest_peak_duration
+                dah_duration = second_peak_duration
+            else:
+                dit_duration = second_peak_duration
+                dah_duration = largest_peak_duration
 
-        if dit_duration > 0:
-            dah_dot_ratio = dah_duration / dit_duration
-        else:
-            dah_dot_ratio = 0
+            if dit_duration > 2: # remove too short beeps
+                dah_dit_ratio_detected = dah_duration / dit_duration
+            else:
+                dah_dit_ratio_detected = 0
 
-
-
-        # check beep length calculation reliability
-        dah_dot_ratio_variance = 15 # percent
-        if dah_dot_ratio >= dah_dot_ratio * (100 - dah_dot_ratio_variance) / 100 \
-                and dah_dot_ratio <= dah_dot_ratio * (100 + dah_dot_ratio_variance) / 100:
-            wpm_reliable = True
+            # check beep length calculation reliability          
+            if dah_dit_ratio_detected >= self.dah_dot_ratio * (100 - self.dah_dit_ratio_variance) / 100 \
+                    and dah_dit_ratio_detected <= self.dah_dot_ratio * (100 + self.dah_dit_ratio_variance) / 100:
+                wpm_reliable = True    
+                break
+            else: 
+                peak_counters[numpy.where(
+                    peak_counters == numpy.amax(peak_counters))[0][0]] = 0
 
         # calculate and update WPM
         if wpm_reliable:
+            largest_peak_indexes = numpy.array(
+                [largest_peak_index, second_peak_index])
+
+            if self.graph_is_saving:
+                self.graph_largest_peak_indexes = largest_peak_indexes  
+
             dit_length_ms = dit_duration * self.CHUNK_LENGTH_MS
             dah_length_ms = dah_duration * self.CHUNK_LENGTH_MS
 

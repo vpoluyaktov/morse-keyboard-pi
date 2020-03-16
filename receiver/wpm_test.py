@@ -12,7 +12,7 @@ class WPMTest:
     wpm = 20
     wpm_variance = 25  # percent
 
-    def calculate_timing(self):
+    def calculate_timings(self):
 
         # morse code timing
         self.dit_length_ms = int(1200 / self.wpm)
@@ -120,7 +120,7 @@ class WPMTest:
 if __name__ == '__main__':
 
     test = WPMTest()
-    test.calculate_timing()
+    test.calculate_timings()
     test.get_wpm()
     input("Press [enter] to continue.")
     print("done")
