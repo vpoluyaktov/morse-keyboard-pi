@@ -419,6 +419,7 @@ class MorseDecoder:
                     counter += 1
                     if counter >= self.word_space_length_min:
                         listascii += " /"
+                        counter = 1
                 else:  # a beep ended, let's decide is it dit or dah
                     if counter >= self.dit_length_min and counter <= self.dit_length_max:
                         listascii += "."
@@ -573,7 +574,7 @@ class MorseDecoder:
             # more accurate ?
             wpm = int(round(1200 / dah_length_ms * 3, 0))
 
-            if wpm >= 5 and wpm <= 35:
+            if wpm >= 2 and wpm <= 35:
                 self.wpm = wpm
                 self.calculate_timings()
 
