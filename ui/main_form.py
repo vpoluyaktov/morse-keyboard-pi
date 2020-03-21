@@ -9,35 +9,40 @@ from ui.receiver_pager import ReceiverPager
 
 
 class MainForm(npyscreen.FormWithMenus):
+    control_box = None
     receiver_box = None
     sender_box = None
 
     def create(self):
         super(MainForm, self).create()
         self.name = "CW Station v.0.0.1"
+        # self.FIX_MINIMUM_SIZE_WHEN_CREATED = False
 
         # NewMenu.addItem(text = '', onSelect = function, shortcut = None, arguments = None, keywords = None)
 
-        self.receiver_box = self.add(ReceiverPager, name="Receiver", footer="Received text", relx=30,
-                                     rely=1, height=5, max_width=100, max_height=10, scroll_exit=False,
+        self.control_box = self.add(npyscreen.BoxTitle, name="Controls", relx=2, rely=1, width=25,
+                                    scroll_exit=True, editable=False)
+
+        self.receiver_start_stop_button = self.add(
+            npyscreen.ButtonPress, name="[ Start/Stop ]", relx=self.control_box.relx + 1, rely=self.control_box.rely + 2)
+
+        self.receiver_clear_button = self.add(
+            npyscreen.ButtonPress, name="[ Clear      ]", relx=self.control_box.relx + 1)
+
+        self.receiver_debug_button = self.add(
+            npyscreen.ButtonPress, name="[ Debug plot ]", relx=self.control_box.relx + 1)
+
+        self.receiver_box = self.add(ReceiverPager, name="Receiver", footer="Received text",
+                                     relx=self.control_box.width + 3, rely=1, max_height=int(self.lines/2 - 1), scroll_exit=True,
                                      contained_widget_arguments={"maxlen": 10}
                                      )
 
-        self.sender_box = self.add(npyscreen.BoxTitle, name="Send", relx=30, height=5, max_height=10,
-                                   scroll_exit=False)
+        self.sender_box = self.add(npyscreen.BoxTitle, name="Send",
+                                   relx=self.control_box.width + 3,
+                                   scroll_exit=True)
 
         self.receiver_box.entry_widget.buffer(
             [], scroll_end=True, scroll_if_editing=False)
-
-        self.receiver_start_stop_button = self.add(
-            npyscreen.ButtonPress, name="Start/Stop", relx=150, rely=2)
-
-        self.receiver_clear_button = self.add(
-            npyscreen.ButtonPress, name="Clear     ", relx=150)
-
-        self.receiver_debug_button = self.add(
-            npyscreen.ButtonPress, name="Debug plot", relx=150)
-
 
 
         self.morse_decoder_queue = Queue(maxsize=1000)
@@ -74,5 +79,3 @@ class MainForm(npyscreen.FormWithMenus):
         self.receiver_box.footer = "Queue: {:3d}    Speed: {:s} wpm    Level: {:4d}    Freq: {:3.0f} KHz"\
             .format(self.morse_decoder_queue.qsize(), wpm, sound_level, frequency)
         self.receiver_box.display()
-
-        
