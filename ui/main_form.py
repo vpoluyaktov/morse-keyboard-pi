@@ -20,7 +20,7 @@ class MainForm(npyscreen.FormWithMenus):
 
         # NewMenu.addItem(text = '', onSelect = function, shortcut = None, arguments = None, keywords = None)
 
-        self.control_box = self.add(npyscreen.BoxTitle, name="Controls", relx=2, rely=1, width=25,
+        self.control_box = self.add(npyscreen.BoxTitle, name="Controls", relx=3, rely=1, width=25,
                                     scroll_exit=True, editable=False)
 
         self.receiver_start_stop_button = self.add(
@@ -33,17 +33,16 @@ class MainForm(npyscreen.FormWithMenus):
             npyscreen.ButtonPress, name="[ Debug plot ]", relx=self.control_box.relx + 1)
 
         self.receiver_box = self.add(ReceiverPager, name="Receiver", footer="Received text",
-                                     relx=self.control_box.width + 3, rely=1, max_height=int(self.lines/2 - 1), scroll_exit=True,
+                                     relx=self.control_box.relx + self.control_box.width + 2, rely=1, max_height=int(self.lines/2 - 1), scroll_exit=True,
                                      contained_widget_arguments={"maxlen": 10}
                                      )
 
         self.sender_box = self.add(npyscreen.BoxTitle, name="Send",
-                                   relx=self.control_box.width + 3,
+                                   relx=self.control_box.relx + self.control_box.width + 2,
                                    scroll_exit=True)
 
         self.receiver_box.entry_widget.buffer(
             [], scroll_end=True, scroll_if_editing=False)
-
 
         self.morse_decoder_queue = Queue(maxsize=1000)
 
