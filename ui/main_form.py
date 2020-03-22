@@ -31,7 +31,25 @@ class MainForm(npyscreen.FormWithMenus):
         self.receiver_debug_button = self.add(
             npyscreen.ButtonPress, name="[ Debug plot ]", relx=self.control_box.relx + 1)
 
-        self.add(npyscreen.FixedText, value="―" * (self.control_box.width-2),
+        self.add(npyscreen.FixedText, value="~" * (self.control_box.width-2),
+                 relx=self.control_box.relx + 1, editable=False)
+
+        self.level_autotune_checkbox = self.add(
+            npyscreen.CheckBox, name="Level Autotune", relx=self.control_box.relx + 3, width=20, highlight=True)
+
+        self.level_field = self.add(
+            npyscreen.TitleText, name="Threshold:", relx=self.control_box.relx + 3, begin_entry_at=15, field_width=22)
+
+        self.add(npyscreen.FixedText, value="~" * (self.control_box.width-2),
+                 relx=self.control_box.relx + 1, editable=False)
+
+        self.freq_autotune_checkbox = self.add(
+            npyscreen.CheckBox, name="Freq Autotune", relx=self.control_box.relx + 3, width=20, highlight=True)
+
+        self.freq_field = self.add(
+            npyscreen.TitleText, name="Frequency:", relx=self.control_box.relx + 3, begin_entry_at=15, field_width=22)
+
+        self.add(npyscreen.FixedText, value="~" * (self.control_box.width-2),
                  relx=self.control_box.relx + 1, editable=False)
 
         self.wpm_autotune_checkbox = self.add(
@@ -71,7 +89,12 @@ class MainForm(npyscreen.FormWithMenus):
         # self.receiver_start_stop_button.whenPressed = self.morse_decoder.start
         self.receiver_clear_button.whenPressed = self.receiver_box.clear_text
         self.receiver_debug_button.whenPressed = self.morse_decoder.generate_plot
-        self.wpm_autotune_checkbox.whenToggled = self.toggle_autotune
+
+        self.level_autotune_checkbox.whenToggled = self.toggle_level_autotune
+        self.level_field.when_value_edited = self.set_level
+        self.freq_autotune_checkbox.whenToggled = self.toggle_freq_autotune
+        self.freq_field.when_value_edited = self.set_freq
+        self.wpm_autotune_checkbox.whenToggled = self.toggle_wpm_autotune
         self.wpm_field.when_value_edited = self.set_wpm
 
     def afterEditing(self):
@@ -87,6 +110,19 @@ class MainForm(npyscreen.FormWithMenus):
         wpm = self.morse_decoder.get_wpm()
         sound_level = self.morse_decoder.get_sound_level()
 
+        self.level_autotune_checkbox.value = self.morse_decoder.sound_level_autotune
+        self.level_autotune_checkbox.display()
+        if self.morse_decoder.sound_level_autotune:
+            self.level_field.value = str(
+                self.morse_decoder.sound_level_threshold)
+            self.level_field.display()
+
+        self.freq_autotune_checkbox.value = self.morse_decoder.frequency_auto_tune
+        self.freq_autotune_checkbox.display()
+        if self.morse_decoder.frequency_auto_tune:
+            self.freq_field.value = str(int(self.morse_decoder.frequency))
+            self.freq_field.display()
+
         self.wpm_autotune_checkbox.value = self.morse_decoder.wpm_autotune
         self.wpm_autotune_checkbox.display()
         if self.morse_decoder.wpm_autotune:
@@ -97,7 +133,22 @@ class MainForm(npyscreen.FormWithMenus):
             .format(self.morse_decoder_queue.qsize(), wpm, sound_level, frequency)
         self.receiver_box.display()
 
-    def toggle_autotune(self):
+    def toggle_level_autotune(self):
+        self.morse_decoder.sound_level_autotune = self.level_autotune_checkbox.value
+
+    def set_level(self):
+        if self.level_field.value != "":
+            self.morse_decoder.sound_level_threshold = int(
+                self.level_field.value)
+
+    def toggle_freq_autotune(self):
+        self.morse_decoder.frequency_auto_tune = self.freq_autotune_checkbox.value
+
+    def set_freq(self):
+        if self.freq_field.value != "":
+            self.morse_decoder.frequency = int(self.freq_field.value)
+
+    def toggle_wpm_autotune(self):
         self.morse_decoder.wpm_autotune = self.wpm_autotune_checkbox.value
 
     def set_wpm(self):

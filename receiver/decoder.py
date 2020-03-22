@@ -28,7 +28,7 @@ warnings.filterwarnings("ignore", message="ALSA")
 
 class MorseDecoder:
 
-    threshold = 1200
+    sound_level_threshold = 1200
     sound_level_autotune = True
     SNR = 0.7
     THRESHOLD_LOW_LIMIT = 50
@@ -126,7 +126,7 @@ class MorseDecoder:
         if sound_level > self.THRESHOLD_LOW_LIMIT:
             self.sound_level_history.append(int(sound_level))
             self.sound_level_history = self.sound_level_history[-self.keep_number_of_chunks:]
-        return sound_level < self.threshold
+        return sound_level < self.sound_level_threshold
 
     def signaltonoise(self, data, axis=0, ddof=0):
         data = numpy.asanyarray(data)
@@ -226,7 +226,7 @@ class MorseDecoder:
             if self.graph_is_saving:
                 self.graph_sound_level_data.append(sound_level)
                 self.get_sound_level()
-                self.graph_sound_level_autotune.append(self.threshold)
+                self.graph_sound_level_autotune.append(self.sound_level_threshold)
 
             silent = self.is_silent(sound_level)
 
@@ -313,8 +313,8 @@ class MorseDecoder:
         # fig.suptitle('graph PLOT')
         axs[0].set_title("Unpacked input bytes (SNR={:3.4f})".format(snr))
         axs[1].set_title("Square of FFT data")
-        axs[2].set_title("Detected frequency")
-        axs[3].set_title("Sound level")
+        axs[2].set_title("Sound level")
+        axs[3].set_title("Detected frequency")
         axs[4].set_title("Sound sequence")
         axs[5].set_title("Sound sequence smoothed")
         axs[6].set_title("Sound sequence restored")
@@ -328,9 +328,9 @@ class MorseDecoder:
                     linewidth=line_width, color=lines_color)
         axs[1].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_fft_data)), self.graph_fft_data, linewidth=line_width,
                     color=lines_color)
-        axs[2].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_data)), self.graph_frequency_data,
+        axs[2].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_level_data)), self.graph_sound_level_data,
                     linewidth=line_width, color=lines_color)
-        axs[3].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_level_data)), self.graph_sound_level_data,
+        axs[3].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_data)), self.graph_frequency_data,
                     linewidth=line_width, color=lines_color)
         axs[4].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_sequence)),
                     self.graph_sound_sequence, linewidth=line_width * 2, color=lines_color)
@@ -351,15 +351,16 @@ class MorseDecoder:
 
         horizontal_lines_width = 0.5
         horizontal_lines_color = 'b'
-        axs[2].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_autotune_min)),
-                    self.graph_frequency_autotune_min, linewidth=horizontal_lines_width,
-                    color=horizontal_lines_color)
-        axs[2].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_autotune_max)),
-                    self.graph_frequency_autotune_max, linewidth=horizontal_lines_width,
-                    color=horizontal_lines_color)
-        axs[3].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_level_autotune)),
+
+        axs[2].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_level_autotune)),
                     self.graph_sound_level_autotune,
                     linewidth=horizontal_lines_width, color=horizontal_lines_color)
+        axs[3].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_autotune_min)),
+                    self.graph_frequency_autotune_min, linewidth=horizontal_lines_width,
+                    color=horizontal_lines_color)
+        axs[3].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_autotune_max)),
+                    self.graph_frequency_autotune_max, linewidth=horizontal_lines_width,
+                    color=horizontal_lines_color)                    
         axs[5].axhline(0.5 + self.smooth_cut_off_offset, linewidth=horizontal_lines_width,
                        color=horizontal_lines_color, linestyle='dotted')
 
@@ -468,6 +469,7 @@ class MorseDecoder:
     def get_frequency(self):
         most_common_frequency = 0
 
+
         if len(self.frequency_history) > 0:
             histogram = Counter(self.frequency_history)
             (most_common_frequency, count) = histogram.most_common(
@@ -475,18 +477,23 @@ class MorseDecoder:
 
         if self.frequency_auto_tune and most_common_frequency >= self.FREQUENCY_LOW_LIMIT and most_common_frequency <= self.FREQUENCY_HIGH_LIMIT:
             self.frequency = most_common_frequency
-            self.frequency_min = int(
-                self.frequency * ((100 - self.frequency_variance) / 100))
-            self.frequency_max = int(
-                self.frequency * ((100 + self.frequency_variance) / 100))
 
-        return most_common_frequency
+        self.frequency_min = int(
+            self.frequency * ((100 - self.frequency_variance) / 100))
+        self.frequency_max = int(
+            self.frequency * ((100 + self.frequency_variance) / 100))
+
+        if self.frequency_auto_tune:
+            return most_common_frequency
+        else:
+            return self.frequency
 
     def get_wpm(self):
 
         wpm_reliable = False
 
         if not self.wpm_autotune:
+            self.calculate_timings()
             return ">{:2d}<".format(self.wpm)
 
         if len(self.beep_duration_history) < 50:
@@ -594,7 +601,7 @@ class MorseDecoder:
             sound_level = int(numpy.mean(self.sound_level_history))
 
             if self.sound_level_autotune and sound_level >= self.THRESHOLD_LOW_LIMIT:
-                self.threshold = int(sound_level * self.SNR)
+                self.sound_level_threshold = int(sound_level * self.SNR)
 
         return sound_level
 
