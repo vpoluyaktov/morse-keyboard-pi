@@ -39,6 +39,7 @@ class MorseDecoder:
 
     wpm = 20
     wpm_variance = 35  # percent
+    wpm_autotune = True
 
     frequency = 650
     frequency_auto_tune = True
@@ -485,8 +486,11 @@ class MorseDecoder:
 
         wpm_reliable = False
 
+        if not self.wpm_autotune:
+            return ">{:2d}<".format(self.wpm)
+
         if len(self.beep_duration_history) < 50:
-            return "|{:2d}|".format(self.wpm)
+            return "?{:2d}?".format(self.wpm)
 
         histogram = Counter(self.beep_duration_history)
 
@@ -574,7 +578,7 @@ class MorseDecoder:
             # more accurate ?
             wpm = int(round(1200 / dah_length_ms * 3, 0))
 
-            if wpm >= 2 and wpm <= 35:
+            if self.wpm_autotune and wpm >= 2 and wpm <= 35:
                 self.wpm = wpm
                 self.calculate_timings()
 

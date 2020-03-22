@@ -16,11 +16,10 @@ class MainForm(npyscreen.FormWithMenus):
     def create(self):
         super(MainForm, self).create()
         self.name = "CW Station v.0.0.1"
-        # self.FIX_MINIMUM_SIZE_WHEN_CREATED = False
 
         # NewMenu.addItem(text = '', onSelect = function, shortcut = None, arguments = None, keywords = None)
-
-        self.control_box = self.add(npyscreen.BoxTitle, name="Controls", relx=3, rely=1, width=25,
+        # Receiver Controls
+        self.control_box = self.add(npyscreen.BoxTitle, name="Receiver Controls", relx=3, rely=1, width=26,
                                     scroll_exit=True, editable=False)
 
         self.receiver_start_stop_button = self.add(
@@ -32,12 +31,22 @@ class MainForm(npyscreen.FormWithMenus):
         self.receiver_debug_button = self.add(
             npyscreen.ButtonPress, name="[ Debug plot ]", relx=self.control_box.relx + 1)
 
-        self.receiver_box = self.add(ReceiverPager, name="Receiver", footer="Received text",
+        self.add(npyscreen.FixedText, value="―" * (self.control_box.width-2),
+                 relx=self.control_box.relx + 1, editable=False)
+
+        self.wpm_autotune_checkbox = self.add(
+            npyscreen.CheckBox, name="WPM Autotune", relx=self.control_box.relx + 3, width=20, highlight=True)
+
+        self.wpm_field = self.add(
+            npyscreen.TitleText, name="WPM:", relx=self.control_box.relx + 3, begin_entry_at=15, field_width=19)
+
+        # Receiver Box
+        self.receiver_box = self.add(ReceiverPager, name="Receiver log", footer="Received text",
                                      relx=self.control_box.relx + self.control_box.width + 2, rely=1, max_height=int(self.lines/2 - 1), scroll_exit=True,
                                      contained_widget_arguments={"maxlen": 10}
                                      )
-
-        self.sender_box = self.add(npyscreen.BoxTitle, name="Send",
+        # Sender Box
+        self.sender_box = self.add(npyscreen.BoxTitle, name="Sending log",
                                    relx=self.control_box.relx + self.control_box.width + 2,
                                    scroll_exit=True)
 
@@ -53,7 +62,7 @@ class MainForm(npyscreen.FormWithMenus):
         decoder_thread = threading.Thread(target=self.morse_decoder.decode, args=(
             self.morse_decoder_queue,), daemon=True)
 
-        #self.receiver_box.entry_widget.values = self.morse_listener.get_devices_list()
+        # self.receiver_box.entry_widget.values = self.morse_listener.get_devices_list()
 
         self.morse_decoder_queue.empty()
         listener_thread.start()
@@ -62,6 +71,8 @@ class MainForm(npyscreen.FormWithMenus):
         # self.receiver_start_stop_button.whenPressed = self.morse_decoder.start
         self.receiver_clear_button.whenPressed = self.receiver_box.clear_text
         self.receiver_debug_button.whenPressed = self.morse_decoder.generate_plot
+        self.wpm_autotune_checkbox.whenToggled = self.toggle_autotune
+        self.wpm_field.when_value_edited = self.set_wpm
 
     def afterEditing(self):
         self.parentApp.setNextForm(None)
@@ -75,6 +86,20 @@ class MainForm(npyscreen.FormWithMenus):
         frequency = self.morse_decoder.get_frequency()
         wpm = self.morse_decoder.get_wpm()
         sound_level = self.morse_decoder.get_sound_level()
+
+        self.wpm_autotune_checkbox.value = self.morse_decoder.wpm_autotune
+        self.wpm_autotune_checkbox.display()
+        if self.morse_decoder.wpm_autotune:
+            self.wpm_field.value = str(self.morse_decoder.wpm)
+            self.wpm_field.display()
+
         self.receiver_box.footer = "Queue: {:3d}    Speed: {:s} wpm    Level: {:4d}    Freq: {:3.0f} KHz"\
             .format(self.morse_decoder_queue.qsize(), wpm, sound_level, frequency)
         self.receiver_box.display()
+
+    def toggle_autotune(self):
+        self.morse_decoder.wpm_autotune = self.wpm_autotune_checkbox.value
+
+    def set_wpm(self):
+        if self.wpm_field.value != "":
+            self.morse_decoder.wpm = int(self.wpm_field.value)
