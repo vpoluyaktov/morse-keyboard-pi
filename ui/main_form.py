@@ -6,6 +6,7 @@ from queue import Queue
 from receiver.listener import MorseListener
 from receiver.decoder import MorseDecoder
 from ui.receiver_pager import ReceiverPager
+from ui.box_title_color import BoxTitleColor
 
 
 class MainForm(npyscreen.FormWithMenus):
@@ -64,7 +65,7 @@ class MainForm(npyscreen.FormWithMenus):
                                      contained_widget_arguments={"maxlen": 10}
                                      )
         # Sender Box
-        self.sender_box = self.add(npyscreen.BoxTitle, name="Sending log",
+        self.sender_box = self.add(BoxTitleColor, name="Sending log",
                                    relx=self.control_box.relx + self.control_box.width + 2,
                                    scroll_exit=True)
 

@@ -1,10 +1,10 @@
 import npyscreen
 import textwrap
+from ui.box_title_color import BoxTitleColor
 
-class ReceiverPager(npyscreen.BoxTitle):
+class ReceiverPager(BoxTitleColor):
 
     _contained_widget = npyscreen.BufferPager
-        
 
     def clear_text(self):   
         self.entry_widget.values = []
@@ -27,5 +27,3 @@ class ReceiverPager(npyscreen.BoxTitle):
         self.entry_widget.buffer(
             [], scroll_end=True, scroll_if_editing=False)
         self.entry_widget.display()    
-
-
