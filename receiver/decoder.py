@@ -64,12 +64,12 @@ class MorseDecoder:
 
     keep_number_of_chunks = int(1000 / CHUNK_LENGTH_MS * keep_history_sec)
 
-    LETTER_TO_MORSE = {" ": "/", "A": ".-", "B": "-...", "C": "-.-.", "D": "-..", "E": ".", "F": "..-.", "G": "--.", "H": "....",
-                       "I": "..", "J": ".---", "K": "-.-", "L": ".-..", "M": "--", "N": "-.", "O": "---", "P": ".--.",
-                       "Q": "--.-", "R": ".-.", "S": "...", "T": "-", "U": "..-", "V": "...-", "W": ".--", "X": "-..-",
-                       "Y": "-.--", "Z": "--..", "1": ".----", "2": "..---", "3": "...--", "4": "....-", "5": ".....",
-                       "6": "-....", "7": "--...", "8": "---..", "9": "----.", "0": "-----", "?": "..--..",
-                       ".": ".-.-.-", ",": "--..--", "!": "-.-.--", "'": ".----."}
+    LETTER_TO_MORSE = {" ": "/", "A": "·–", "B": "–···", "C": "–·–·", "D": "–··", "E": "·", "F": "··–·", "G": "––·", "H": "····",
+                       "I": "··", "J": "·–––", "K": "–·–", "L": "·–··", "M": "––", "N": "–·", "O": "–––", "P": "·––·",
+                       "Q": "––·–", "R": "·–·", "S": "···", "T": "–", "U": "··–", "V": "···–", "W": "·––", "X": "–··–",
+                       "Y": "–·––", "Z": "––··", "1": "·––––", "2": "··–––", "3": "···––", "4": "····–", "5": "·····",
+                       "6": "–····", "7": "––···", "8": "–––··", "9": "––––·", "0": "–––––", "?": "··––··",
+                       "·": "·–·–·–", ",": "––··––", "!": "–·–·––", "'": "·––––·"}
 
     def __init__(self):
         self.calculate_timings()
@@ -425,9 +425,9 @@ class MorseDecoder:
                         counter = 1
                 else:  # a beep ended, let's decide is it dit or dah
                     if counter >= self.dit_length_min and counter <= self.dit_length_max:
-                        morse_ascii += "."
+                        morse_ascii += "·"
                     elif counter >= self.dah_length_min and counter <= self.dah_length_max:
-                        morse_ascii += "-"
+                        morse_ascii += "–"
 
                     self.beep_duration_history.append(counter)
                     self.beep_duration_history = self.beep_duration_history[-50:]
