@@ -60,6 +60,7 @@ class MorseDecoder:
     beep_duration_history = []
     sound_level_history = []
     keep_history_sec = 5
+    morse_ascii_history = ""
 
     keep_number_of_chunks = int(1000 / CHUNK_LENGTH_MS * keep_history_sec)
 
@@ -403,7 +404,7 @@ class MorseDecoder:
 
         counter = 0
         sounding = False
-        listascii = ""
+        morse_ascii = ""
         for i in range(len(morse_sequence_restored)):
             if morse_sequence_restored[i] == 1:
                 if sounding:
@@ -412,7 +413,7 @@ class MorseDecoder:
                     if counter >= self.char_space_length_min and counter <= self.char_space_length_max:
                         None  # listascii += ""
                     elif counter >= self.letter_space_length_min and counter <= self.letter_space_length_max:
-                        listascii += " "
+                        morse_ascii += " "
 
                     counter = 1
                     sounding = True
@@ -420,29 +421,31 @@ class MorseDecoder:
                 if not sounding:
                     counter += 1
                     if counter >= self.word_space_length_min:
-                        listascii += " /"
+                        morse_ascii += " /"
                         counter = 1
                 else:  # a beep ended, let's decide is it dit or dah
                     if counter >= self.dit_length_min and counter <= self.dit_length_max:
-                        listascii += "."
+                        morse_ascii += "."
                     elif counter >= self.dah_length_min and counter <= self.dah_length_max:
-                        listascii += "-"
+                        morse_ascii += "-"
 
                     self.beep_duration_history.append(counter)
                     self.beep_duration_history = self.beep_duration_history[-50:]
                     counter = 1
                     sounding = False
 
-        listascii = listascii.split(" ")
+        self.morse_ascii_history += morse_ascii + " "
+        self.morse_ascii_history = self.morse_ascii_history[-250:]
+        morse_ascii = morse_ascii.split(" ")
         stringout = ""
-        for i in range(len(listascii)):
-            if listascii[i] == "":
+        for i in range(len(morse_ascii)):
+            if morse_ascii[i] == "":
                 if not last_character in line_breakers:
                     stringout += " "  # drop space in the beginning of a line
             else:
                 letter_found = False
                 for letter, morse in self.LETTER_TO_MORSE.items():
-                    if listascii[i] == morse:
+                    if morse_ascii[i] == morse:
                         stringout += letter
                         last_character = letter
                         letter_found = True
@@ -604,6 +607,9 @@ class MorseDecoder:
                 self.sound_level_threshold = int(sound_level * self.SNR)
 
         return sound_level
+
+    def get_morse_ascii_history(self):    
+        return self.morse_ascii_history
 
 
 if __name__ == "__main__":

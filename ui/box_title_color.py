@@ -8,8 +8,17 @@ class BoxTitleColor(npyscreen.BoxTitle):
 
         HEIGHT = self.height - 1
         WIDTH  = self.width - 1
-        box_attributes = self.parent.theme_manager.findPair(self, self.color)
+ 
+        box_attributes = curses.A_NORMAL
+        if self.do_colors() and not self.editing:
+            box_attributes = box_attributes | self.parent.theme_manager.findPair(self, self.color) #| curses.A_BOLD
+        elif self.editing:
+            box_attributes = box_attributes | self.parent.theme_manager.findPair(self, 'HILIGHT')
+        else:
+            box_attributes = box_attributes #| curses.A_BOLD
+        
         self.parent.curses_pad.attron(box_attributes)
+ 
         # draw box.
         self.parent.curses_pad.hline(self.rely, self.relx, curses.ACS_HLINE, WIDTH)
         self.parent.curses_pad.hline(self.rely + HEIGHT, self.relx, curses.ACS_HLINE, WIDTH)
@@ -21,6 +30,7 @@ class BoxTitleColor(npyscreen.BoxTitle):
         self.parent.curses_pad.addch(self.rely, self.relx+WIDTH, curses.ACS_URCORNER, )
         self.parent.curses_pad.addch(self.rely+HEIGHT, self.relx, curses.ACS_LLCORNER, )
         self.parent.curses_pad.addch(self.rely+HEIGHT, self.relx+WIDTH, curses.ACS_LRCORNER, )
+
         self.parent.curses_pad.attroff(box_attributes)
 
         # draw title

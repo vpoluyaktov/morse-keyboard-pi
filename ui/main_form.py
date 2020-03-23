@@ -102,7 +102,6 @@ class MainForm(npyscreen.FormWithMenus):
         self.parentApp.setNextForm(None)
 
     def while_waiting(self):
-
         decoded_string = self.morse_decoder.getBuffer()
         if decoded_string != "":
             self.receiver_box.add_text(decoded_string)
@@ -130,8 +129,22 @@ class MainForm(npyscreen.FormWithMenus):
             self.wpm_field.value = str(self.morse_decoder.wpm)
             self.wpm_field.display()
 
-        self.receiver_box.footer = "Queue: {:3d}    Speed: {:s} wpm    Level: {:4d}    Freq: {:3.0f} KHz"\
-            .format(self.morse_decoder_queue.qsize(), wpm, sound_level, frequency)
+        morse_ascii_history = self.morse_decoder.get_morse_ascii_history()
+
+        receiver_box_header = "Receiver log "
+        morse_ascii_history_length = self.receiver_box.width - \
+            len(receiver_box_header) - 12
+        morse_ascii_history = morse_ascii_history[-morse_ascii_history_length:]
+
+        receiver_box_header += "[ {:" + \
+            str(morse_ascii_history_length-4) + "s}]"
+        self.receiver_box.name = receiver_box_header.format(
+            morse_ascii_history)
+
+        receiver_box_footer = "Queue: {:3d} | Speed: {:s} wpm | Level: {:4d} | Freq: {:3.0f} KHz"
+        self.receiver_box.footer = receiver_box_footer.format(
+            self.morse_decoder_queue.qsize(), wpm, sound_level, frequency)
+
         self.receiver_box.display()
 
     def toggle_level_autotune(self):

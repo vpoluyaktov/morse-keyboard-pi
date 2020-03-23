@@ -37,4 +37,5 @@ class BlueTheme(ThemeManagers.ThemeManager):
         'VERYGOOD': 'WHITE_BLUE',
         'CAUTION': 'YELLOW_BLUE',
         'CAUTIONHL': 'WHITE_BLUE',
+        'HILIGHT': 'YELLOW_BLUE'
         }
