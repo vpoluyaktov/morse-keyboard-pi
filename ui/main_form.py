@@ -2,6 +2,7 @@ import npyscreen
 
 import threading
 from queue import Queue
+import curses
 
 from receiver.listener import MorseListener
 from receiver.decoder import MorseDecoder
@@ -88,7 +89,7 @@ class MainForm(npyscreen.FormWithMenus):
         decoder_thread.start()
 
         # self.receiver_start_stop_button.whenPressed = self.morse_decoder.start
-        self.receiver_clear_button.whenPressed = self.receiver_box.clear_text
+        self.receiver_clear_button.whenPressed = self.receiver_clear
         self.receiver_debug_button.whenPressed = self.morse_decoder.generate_plot
 
         self.level_autotune_checkbox.whenToggled = self.toggle_level_autotune
@@ -131,7 +132,7 @@ class MainForm(npyscreen.FormWithMenus):
 
         morse_ascii_history = self.morse_decoder.get_morse_ascii_history()
 
-        receiver_box_header = "Receiver log "
+        receiver_box_header = "Receiver log " + u'\u2500' * int(self.receiver_box.width * 1/3) + " "
         morse_ascii_history_length = self.receiver_box.width - \
             len(receiver_box_header) - 12
         morse_ascii_history = morse_ascii_history[-morse_ascii_history_length:]
@@ -168,3 +169,7 @@ class MainForm(npyscreen.FormWithMenus):
     def set_wpm(self):
         if self.wpm_field.value != "":
             self.morse_decoder.wpm = int(self.wpm_field.value)
+
+    def receiver_clear(self):
+        self.receiver_box.clear_text()
+        self.morse_decoder.clear_morse_ascii_history()

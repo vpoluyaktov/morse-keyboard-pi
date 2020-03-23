@@ -611,6 +611,9 @@ class MorseDecoder:
     def get_morse_ascii_history(self):    
         return self.morse_ascii_history
 
+    def clear_morse_ascii_history(self):
+        self.morse_ascii_history = ""
+
 
 if __name__ == "__main__":
     decoder = MorseDecoder()
