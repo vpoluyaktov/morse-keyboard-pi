@@ -25,40 +25,40 @@ class MainForm(npyscreen.FormWithMenus):
                                     scroll_exit=True, editable=False)
 
         self.receiver_start_stop_button = self.add(
-            npyscreen.ButtonPress, name="[ Start/Stop ]", relx=self.control_box.relx + 1, rely=self.control_box.rely + 2)
+            npyscreen.ButtonPress, name="[    Start/Stop    ]", relx=self.control_box.relx + 1, rely=self.control_box.rely + 2)
 
         self.receiver_clear_button = self.add(
-            npyscreen.ButtonPress, name="[ Clear      ]", relx=self.control_box.relx + 1)
+            npyscreen.ButtonPress, name="[    Clear         ]", relx=self.control_box.relx + 1)
 
         self.receiver_debug_button = self.add(
-            npyscreen.ButtonPress, name="[ Debug plot ]", relx=self.control_box.relx + 1)
+            npyscreen.ButtonPress, name="[    Debug plot    ]", relx=self.control_box.relx + 1)
 
         self.add(npyscreen.FixedText, value="~" * (self.control_box.width-2),
                  relx=self.control_box.relx + 1, editable=False)
 
         self.level_autotune_checkbox = self.add(
-            npyscreen.CheckBox, name="Level Autotune", relx=self.control_box.relx + 3, width=20, highlight=True)
+            npyscreen.CheckBox, name="Level Autotune", relx=self.control_box.relx + 3, width=21, highlight=True)
 
         self.level_field = self.add(
-            npyscreen.TitleText, name="Threshold:", relx=self.control_box.relx + 3, begin_entry_at=15, field_width=22)
+            npyscreen.TitleText, name="Threshold:", relx=self.control_box.relx + 3, begin_entry_at=16, field_width=23)
 
         self.add(npyscreen.FixedText, value="~" * (self.control_box.width-2),
                  relx=self.control_box.relx + 1, editable=False)
 
         self.freq_autotune_checkbox = self.add(
-            npyscreen.CheckBox, name="Freq Autotune", relx=self.control_box.relx + 3, width=20, highlight=True)
+            npyscreen.CheckBox, name="Freq Autotune", relx=self.control_box.relx + 3, width=21, highlight=True)
 
         self.freq_field = self.add(
-            npyscreen.TitleText, name="Frequency:", relx=self.control_box.relx + 3, begin_entry_at=15, field_width=22)
+            npyscreen.TitleText, name="Frequency:", relx=self.control_box.relx + 3, begin_entry_at=17, field_width=23)
 
         self.add(npyscreen.FixedText, value="~" * (self.control_box.width-2),
                  relx=self.control_box.relx + 1, editable=False)
 
         self.wpm_autotune_checkbox = self.add(
-            npyscreen.CheckBox, name="WPM Autotune", relx=self.control_box.relx + 3, width=20, highlight=True)
+            npyscreen.CheckBox, name="WPM Autotune", relx=self.control_box.relx + 3, width=21, highlight=True)
 
         self.wpm_field = self.add(
-            npyscreen.TitleText, name="WPM:", relx=self.control_box.relx + 3, begin_entry_at=15, field_width=19)
+            npyscreen.TitleText, name="WPM:", relx=self.control_box.relx + 3, begin_entry_at=18, field_width=22)
 
         # Receiver Box
         self.receiver_box = self.add(ReceiverPager, name="Receiver log", footer="Received text",
@@ -132,17 +132,17 @@ class MainForm(npyscreen.FormWithMenus):
 
         morse_ascii_history = self.morse_decoder.get_morse_ascii_history()
 
-        receiver_box_header = "Receiver log " + u'\u2500' * int(self.receiver_box.width * 1/3) + " "
+        receiver_box_header = "Receiver log " + u'\u2500' * int(self.receiver_box.width - 86)
         morse_ascii_history_length = self.receiver_box.width - \
-            len(receiver_box_header) - 12
+            len(receiver_box_header) - 14
         morse_ascii_history = morse_ascii_history[-morse_ascii_history_length:]
 
-        receiver_box_header += "[ {:" + \
-            str(morse_ascii_history_length-4) + "s}]"
+        receiver_box_header += " [ {:" + \
+            str(morse_ascii_history_length) + "s}] "
         self.receiver_box.name = receiver_box_header.format(
             morse_ascii_history)
 
-        receiver_box_footer = "Queue: {:3d} | Speed: {:s} wpm | Level: {:4d} | Freq: {:3.0f} KHz"
+        receiver_box_footer = "[ Queue: {:3d} | Speed: {:s} wpm | Level: {:4d} | Freq: {:3.0f} KHz ]"
         self.receiver_box.footer = receiver_box_footer.format(
             self.morse_decoder_queue.qsize(), wpm, sound_level, frequency)
 
