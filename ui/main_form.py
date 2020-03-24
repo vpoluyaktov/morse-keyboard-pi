@@ -11,7 +11,7 @@ from ui.box_title_color import BoxTitleColor
 
 
 class MainForm(npyscreen.FormWithMenus):
-    control_box = None
+    receiver_control_box = None
     receiver_box = None
     sender_box = None
 
@@ -21,53 +21,58 @@ class MainForm(npyscreen.FormWithMenus):
 
         # NewMenu.addItem(text = '', onSelect = function, shortcut = None, arguments = None, keywords = None)
         # Receiver Controls
-        self.control_box = self.add(npyscreen.BoxTitle, name="Receiver Controls", relx=3, rely=1, width=26,
-                                    scroll_exit=True, editable=False)
+        self.receiver_control_box = self.add(BoxTitleColor, name="Receiver Controls", relx=3, rely=1, width=26,
+                                             max_height=int(self.lines/2 - 1), scroll_exit=True, editable=False)
 
         self.receiver_start_stop_button = self.add(
-            npyscreen.ButtonPress, name="[    Start/Stop    ]", relx=self.control_box.relx + 1, rely=self.control_box.rely + 2)
+            npyscreen.ButtonPress, name="[    Start/Stop    ]", relx=self.receiver_control_box.relx + 1, rely=self.receiver_control_box.rely + 2)
 
         self.receiver_clear_button = self.add(
-            npyscreen.ButtonPress, name="[    Clear         ]", relx=self.control_box.relx + 1)
+            npyscreen.ButtonPress, name="[    Clear         ]", relx=self.receiver_control_box.relx + 1)
 
         self.receiver_debug_button = self.add(
-            npyscreen.ButtonPress, name="[    Debug plot    ]", relx=self.control_box.relx + 1)
+            npyscreen.ButtonPress, name="[    Debug plot    ]", relx=self.receiver_control_box.relx + 1)
 
-        self.add(npyscreen.FixedText, value="~" * (self.control_box.width-2),
-                 relx=self.control_box.relx + 1, editable=False)
+        self.add(npyscreen.FixedText, value="~" * (self.receiver_control_box.width-2),
+                 relx=self.receiver_control_box.relx + 1, editable=False)
 
         self.level_autotune_checkbox = self.add(
-            npyscreen.CheckBox, name="Level Autotune", relx=self.control_box.relx + 3, width=21, highlight=True)
+            npyscreen.CheckBox, name="Level Autotune", relx=self.receiver_control_box.relx + 3, width=21, highlight=True)
 
         self.level_field = self.add(
-            npyscreen.TitleText, name="Threshold:", relx=self.control_box.relx + 3, begin_entry_at=16, field_width=23)
+            npyscreen.TitleText, name="Threshold:", relx=self.receiver_control_box.relx + 3, begin_entry_at=16, field_width=23)
 
-        self.add(npyscreen.FixedText, value="~" * (self.control_box.width-2),
-                 relx=self.control_box.relx + 1, editable=False)
+        self.add(npyscreen.FixedText, value="~" * (self.receiver_control_box.width-2),
+                 relx=self.receiver_control_box.relx + 1, editable=False)
 
         self.freq_autotune_checkbox = self.add(
-            npyscreen.CheckBox, name="Freq Autotune", relx=self.control_box.relx + 3, width=21, highlight=True)
+            npyscreen.CheckBox, name="Freq Autotune", relx=self.receiver_control_box.relx + 3, width=21, highlight=True)
 
         self.freq_field = self.add(
-            npyscreen.TitleText, name="Frequency:", relx=self.control_box.relx + 3, begin_entry_at=17, field_width=23)
+            npyscreen.TitleText, name="Frequency:", relx=self.receiver_control_box.relx + 3, begin_entry_at=17, field_width=23)
 
-        self.add(npyscreen.FixedText, value="~" * (self.control_box.width-2),
-                 relx=self.control_box.relx + 1, editable=False)
+        self.add(npyscreen.FixedText, value="~" * (self.receiver_control_box.width-2),
+                 relx=self.receiver_control_box.relx + 1, editable=False)
 
         self.wpm_autotune_checkbox = self.add(
-            npyscreen.CheckBox, name="WPM Autotune", relx=self.control_box.relx + 3, width=21, highlight=True)
+            npyscreen.CheckBox, name="WPM Autotune", relx=self.receiver_control_box.relx + 3, width=21, highlight=True)
 
         self.wpm_field = self.add(
-            npyscreen.TitleText, name="WPM:", relx=self.control_box.relx + 3, begin_entry_at=18, field_width=22)
+            npyscreen.TitleText, name="WPM:", relx=self.receiver_control_box.relx + 3, begin_entry_at=18, field_width=22)
+
+        # Sender Controls
+        self.sender_control_box = self.add(BoxTitleColor, name="Sender Controls", relx=3, rely=self.receiver_control_box.height+1, width=26,
+                                           max_height=int(self.lines/2-2), scroll_exit=True, editable=False)
 
         # Receiver Box
         self.receiver_box = self.add(ReceiverPager, name="Receiver log", footer="Received text",
-                                     relx=self.control_box.relx + self.control_box.width + 2, rely=1, max_height=int(self.lines/2 - 1), scroll_exit=True,
+                                     relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2, rely=1, max_height=int(self.lines/2 - 1), scroll_exit=True,
                                      contained_widget_arguments={"maxlen": 10}
                                      )
         # Sender Box
         self.sender_box = self.add(BoxTitleColor, name="Sending log",
-                                   relx=self.control_box.relx + self.control_box.width + 2,
+                                   relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
+                                   max_height=int(self.lines/2-2),
                                    scroll_exit=True)
 
         self.receiver_box.entry_widget.buffer(
@@ -132,7 +137,8 @@ class MainForm(npyscreen.FormWithMenus):
 
         morse_ascii_history = self.morse_decoder.get_morse_ascii_history()
 
-        receiver_box_header = "Receiver log " + u'\u2500' * int(self.receiver_box.width - 86)
+        receiver_box_header = "Receiver log " + \
+            u'\u2500' * int(self.receiver_box.width - 86)
         morse_ascii_history_length = self.receiver_box.width - \
             len(receiver_box_header) - 14
         morse_ascii_history = morse_ascii_history[-morse_ascii_history_length:]
