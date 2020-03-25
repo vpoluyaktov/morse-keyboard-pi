@@ -559,6 +559,9 @@ class MorseDecoder:
             peak_counters == numpy.amax(peak_counters))[0][0]] = 0
         second_peak_duration = 0     
         while numpy.amax(peak_counters) > 0:    
+            # it looks like there is a bug here with second_peak_index calculation - sometimes it's bigger than the length 
+            # of the beep_duration array
+            # need to investigate
             second_peak_index = peak_indexes[numpy.where(
                 peak_counters == numpy.amax(peak_counters))[0]][0]
             second_peak_duration = durations[second_peak_index]    
