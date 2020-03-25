@@ -28,8 +28,12 @@ class MorseListener:
     CHUNK_LENGTH_MS = 10
     FORMAT = pyaudio.paInt16
     ALLOWANCE = 3
+    stop_is_requested = False
 
     chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
+
+    def stop(self):
+        self.stop_is_requested = True
 
     def get_devices_list(self):
         # List all available microphone devices
@@ -51,12 +55,16 @@ class MorseListener:
 
     def listen(self, morse_decoder_queue):
 
+        self.stop_is_requested = False
+
         p = pyaudio.PyAudio()
 
         stream = p.open(format = self.FORMAT, channels = 1, rate = self.RATE, input = True,
                         input_device_index = self.DEVICE_INDEX, frames_per_buffer = self.chunk)
 
-        while True:
+        while not self.stop_is_requested:
             sound_data = stream.read(self.chunk, exception_on_overflow = False)
             morse_decoder_queue.put(sound_data)
+
+        return    
 

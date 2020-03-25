@@ -69,9 +69,12 @@ class MorseDecoder:
                        "Q": "--·-", "R": "·-·", "S": "···", "T": "-", "U": "··-", "V": "···-", "W": "·--", "X": "-··-",
                        "Y": "-·--", "Z": "--··", "1": "·----", "2": "··---", "3": "···--", "4": "····-", "5": "·····",
                        "6": "-····", "7": "--···", "8": "---··", "9": "----·", "0": "-----", "?": "··--··",
-                       "·": "·-·-·-", ",": "--··--", "!": "-·-·--", "'": "·----·"}
+                       ".": "·-·-·-", ",": "--··--", "!": "-·-·--", "'": "·----·"}
 
     def __init__(self):
+
+        self.stop_is_requested = False
+
         self.calculate_timings()
 
         self.graph_is_saving = False
@@ -94,6 +97,9 @@ class MorseDecoder:
 
         self.output_buffer = ""
         self.last_returned_buffer = ""
+
+    def stop(self):
+        self.stop_is_requested = True
 
     def calculate_timings(self):
 
@@ -181,12 +187,13 @@ class MorseDecoder:
         return smoothed_array
 
     def decode(self, morse_decoder_queue):
+        self.stop_is_requested = False
         sound_started = False
         syncronized = False
         num_silent = 0
         sound_sequence = []
 
-        while True:
+        while not self.stop_is_requested:
             sound_data = morse_decoder_queue.get()
 
             if self.graph_is_saving:
@@ -284,6 +291,8 @@ class MorseDecoder:
                 sound_sequence = []
                 sound_started = False
                 syncronized = True
+
+        return            
 
     def generate_plot(self):
 

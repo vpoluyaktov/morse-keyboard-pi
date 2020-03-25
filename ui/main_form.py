@@ -14,6 +14,11 @@ class MainForm(npyscreen.FormWithMenus):
     receiver_control_box = None
     receiver_box = None
     sender_box = None
+    morse_listener = None
+    morse_decoder = None
+    listener_thread = None
+    decoder_thread = None
+    receiver_is_running = False
 
     def create(self):
         super(MainForm, self).create()
@@ -25,13 +30,13 @@ class MainForm(npyscreen.FormWithMenus):
                                              max_height=int(self.lines/2 - 1), scroll_exit=True, editable=False)
 
         self.receiver_start_stop_button = self.add(
-            npyscreen.ButtonPress, name="[    Start/Stop    ]", relx=self.receiver_control_box.relx + 1, rely=self.receiver_control_box.rely + 2)
+            npyscreen.ButtonPress, name="[ Start receiver   ]", relx=self.receiver_control_box.relx + 1, rely=self.receiver_control_box.rely + 2)
 
         self.receiver_clear_button = self.add(
-            npyscreen.ButtonPress, name="[    Clear         ]", relx=self.receiver_control_box.relx + 1)
+            npyscreen.ButtonPress, name="[ Clear log        ]", relx=self.receiver_control_box.relx + 1)
 
         self.receiver_debug_button = self.add(
-            npyscreen.ButtonPress, name="[    Debug plot    ]", relx=self.receiver_control_box.relx + 1)
+            npyscreen.ButtonPress, name="[ Debug plot       ]", relx=self.receiver_control_box.relx + 1)
 
         self.add(npyscreen.FixedText, value="~" * (self.receiver_control_box.width-2),
                  relx=self.receiver_control_box.relx + 1, editable=False)
@@ -62,7 +67,7 @@ class MainForm(npyscreen.FormWithMenus):
 
         # Sender Controls
         self.sender_control_box = self.add(BoxTitleColor, name="Sender Controls", relx=3, rely=self.receiver_control_box.height+1, width=26,
-                                           max_height=int(self.lines/2-2), scroll_exit=True, editable=False)
+                                           scroll_exit=True, editable=False)
 
         # Receiver Box
         self.receiver_box = self.add(ReceiverPager, name="Receiver log", footer="Received text",
@@ -72,7 +77,6 @@ class MainForm(npyscreen.FormWithMenus):
         # Sender Box
         self.sender_box = self.add(BoxTitleColor, name="Sending log",
                                    relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
-                                   max_height=int(self.lines/2-2),
                                    scroll_exit=True)
 
         self.receiver_box.entry_widget.buffer(
@@ -82,18 +86,10 @@ class MainForm(npyscreen.FormWithMenus):
 
         self.morse_listener = MorseListener()
         self.morse_decoder = MorseDecoder()
-        listener_thread = threading.Thread(target=self.morse_listener.listen, args=(
-            self.morse_decoder_queue,), daemon=True)
-        decoder_thread = threading.Thread(target=self.morse_decoder.decode, args=(
-            self.morse_decoder_queue,), daemon=True)
 
         # self.receiver_box.entry_widget.values = self.morse_listener.get_devices_list()
 
-        self.morse_decoder_queue.empty()
-        listener_thread.start()
-        decoder_thread.start()
-
-        # self.receiver_start_stop_button.whenPressed = self.morse_decoder.start
+        self.receiver_start_stop_button.whenPressed = self.start_stop_receiver
         self.receiver_clear_button.whenPressed = self.receiver_clear
         self.receiver_debug_button.whenPressed = self.morse_decoder.generate_plot
 
@@ -106,6 +102,25 @@ class MainForm(npyscreen.FormWithMenus):
 
     def afterEditing(self):
         self.parentApp.setNextForm(None)
+
+    def start_stop_receiver(self):
+
+        if not self.receiver_is_running:
+            self.morse_decoder_queue.empty()
+            self.listener_thread = threading.Thread(target=self.morse_listener.listen, args=(
+                self.morse_decoder_queue,), daemon=True)
+            self.decoder_thread = threading.Thread(target=self.morse_decoder.decode, args=(
+                self.morse_decoder_queue,), daemon=True)
+            self.listener_thread.start()
+            self.decoder_thread.start()
+            self.receiver_start_stop_button.name = "[ Stop receiver    ]"
+            self.receiver_is_running = True
+        else:
+            self.morse_listener.stop()
+            self.morse_decoder.stop()
+            self.morse_decoder_queue.empty()
+            self.receiver_start_stop_button.name = "[ Start receiver   ]"
+            self.receiver_is_running = False
 
     def while_waiting(self):
         decoded_string = self.morse_decoder.getBuffer()
