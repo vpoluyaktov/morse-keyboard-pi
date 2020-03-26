@@ -22,14 +22,13 @@ except ImportError as error:
 
 class MorseListener:
 
-    DEVICE_INDEX = 2
-
     RATE = 44100  # frames per a second
     CHUNK_LENGTH_MS = 10
     FORMAT = pyaudio.paInt16
     ALLOWANCE = 3
-    stop_is_requested = False
 
+    audio_device_index = 0
+    stop_is_requested = False
     chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
 
     def stop(self):
@@ -47,9 +46,10 @@ class MorseListener:
                 name = dev.get('name')
                 rate = dev.get('defaultSampleRate')
 
-                device_list.append([
-                    "Index {i}: {name} (Max Channels {input_chn}, Default @ {rate} Hz)".format(i = i, name = name,
-                        input_chn = input_chn, rate = int(rate))])
+                device_list.append(
+                    [i, "{index}: {name} (Max Channels {input_chn}, Default @ {rate} Hz)".format(index=i, name=name,
+                                                                                                 input_chn=input_chn, rate=int(rate))])
+        pa = None
 
         return device_list
 
@@ -59,12 +59,11 @@ class MorseListener:
 
         p = pyaudio.PyAudio()
 
-        stream = p.open(format = self.FORMAT, channels = 1, rate = self.RATE, input = True,
-                        input_device_index = self.DEVICE_INDEX, frames_per_buffer = self.chunk)
+        stream = p.open(format=self.FORMAT, channels=1, rate=self.RATE, input=True,
+                        input_device_index=self.audio_device_index, frames_per_buffer=self.chunk)
 
         while not self.stop_is_requested:
-            sound_data = stream.read(self.chunk, exception_on_overflow = False)
+            sound_data = stream.read(self.chunk, exception_on_overflow=False)
             morse_decoder_queue.put(sound_data)
 
-        return    
-
+        return
