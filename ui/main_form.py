@@ -130,8 +130,8 @@ class MainForm(npyscreen.FormWithMenus):
         elif self.receiver_select_device.value != None:
             self.start_receiver()
         else: 
-            # Desplay popup here
-            None
+            npyscreen.notify("You need to select audio device first", title="Error", form_color="CRITICAL")
+            time.sleep(2) 
 
     def start_receiver(self):
         self.morse_decoder_queue.empty()
@@ -152,7 +152,7 @@ class MainForm(npyscreen.FormWithMenus):
         self.receiver_is_running = False
 
     def while_waiting(self):
-        decoded_string = self.morse_decoder.getBuffer()
+        decoded_string = self.morse_decoder.get_buffer()
         if decoded_string != "":
             self.receiver_box.add_text(decoded_string)
 

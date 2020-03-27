@@ -468,7 +468,7 @@ class MorseDecoder:
         # print(stringout, end = '', flush = True)
         self.output_buffer += stringout
 
-    def getBuffer(self):
+    def get_buffer(self):
 
         buffer = ""
 
@@ -489,6 +489,8 @@ class MorseDecoder:
                 1)[0]  # self.frequency_history = []
 
         if self.frequency_auto_tune and most_common_frequency >= self.FREQUENCY_LOW_LIMIT and most_common_frequency <= self.FREQUENCY_HIGH_LIMIT:
+            if abs(self.frequency - most_common_frequency) > 10:
+                self.output_buffer +=  "\n"
             self.frequency = most_common_frequency
 
         self.frequency_min = int(
@@ -602,6 +604,8 @@ class MorseDecoder:
             wpm = int(round(1200 / dah_length_ms * 3, 0))
 
             if self.wpm_autotune and wpm >= 2 and wpm <= 35:
+                # if abs(self.wpm - wpm) > 5:
+                #     self.output_buffer += "\n" 
                 self.wpm = wpm
                 self.calculate_timings()
 
@@ -633,5 +637,5 @@ if __name__ == "__main__":
     decoder.graph_is_saving = True
     morse_decoder_queue = Queue(maxsize=1)
     decoder.decode(morse_decoder_queue)
-    buffer = decoder.getBuffer()
+    buffer = decoder.get_buffer()
     print(buffer)
