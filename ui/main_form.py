@@ -33,12 +33,34 @@ class MainForm(npyscreen.FormWithMenus):
 
         # main_menu = npyscreen.MenuDisplayScreen.addItem(text = 'Device', onSelect = self.receiver_select_device, shortcut = None, arguments = None, keywords = None)
 
+        # create screen controls
+        self.add_receiver_device_control()
+        self.add_receiver_controls_box()
+        self.add_sender_contorls_box()
+        self.add_receiver_log_box()
+        self.add_sender_log_box()
+
+        # init decoder queue
+        self.morse_decoder_queue = Queue(maxsize=1000)
+
+        # init transmit queue
+        self.keyboard_transmit_queue = Queue(maxsize=1000)
+        self.keyboard_transmit_queue.empty()
+        self.keyboard_transmitter_thread = threading.Thread(target=self.keyboard_transmitter.transmit, args=(
+            self.keyboard_transmit_queue,), daemon=True)
+        self.keyboard_transmitter_thread.start()
+
+    def afterEditing(self):
+        self.parentApp.setNextForm(None)
+
+    def add_receiver_device_control(self):
         self.receiver_select_device = self.add(
             npyscreen.TitleCombo,  name="Audio Device:", relx=8, rely=1,
             values=[el[1] for el in self.morse_listener.get_devices_list()])
         self.receiver_select_device.when_cursor_moved = self.receiver_refresh_device_list
         self.receiver_select_device.when_value_edited = self.receiver_change_device
 
+    def add_receiver_controls_box(self):
         # Receiver Controls
         self.receiver_control_box = self.add(BoxTitleColor, name="Receiver Controls", relx=3, rely=2, width=26,
                                              max_height=int(self.lines/2 - 1), scroll_exit=True, editable=False)
@@ -80,40 +102,10 @@ class MainForm(npyscreen.FormWithMenus):
         self.wpm_field = self.add(
             npyscreen.TitleText, name="WPM:", relx=self.receiver_control_box.relx + 3, begin_entry_at=18, field_width=22)
 
-        # Sender Controls
-        self.sender_control_box = self.add(BoxTitleColor, name="Sender Controls", relx=3,
-                                           rely=self.receiver_control_box.rely + self.receiver_control_box.height, width=26,
-                                           scroll_exit=True, editable=False)
-
-        # Receiver Box
-        self.receiver_box = self.add(ReceiverPager, name="Receiver log", footer="Received text",
-                                     relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
-                                     rely=self.receiver_control_box.rely, max_height=int(self.lines/2 - 1), scroll_exit=True,
-                                     contained_widget_arguments={"maxlen": 10}
-                                     )
-        # Sender Box
-        self.sender_box = self.add(SenderBox, name="Sending log",
-                                   relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
-                                   editable=True, scroll_exit=True,
-                                   )
-
-        self.receiver_box.entry_widget.buffer(
-            [], scroll_end=True, scroll_if_editing=False)
-
-        self.morse_decoder_queue = Queue(maxsize=1000)
-        self.keyboard_transmit_queue = Queue(maxsize=1000)
-
-        self.keyboard_transmit_queue.empty()
-        self.keyboard_transmitter_thread = threading.Thread(target=self.keyboard_transmitter.transmit, args=(
-            self.keyboard_transmit_queue,), daemon=True)
-        self.keyboard_transmitter_thread.start()
-
+        # Control bindings
         self.receiver_start_stop_button.whenPressed = self.receiver_start_stop
         self.receiver_clear_button.whenPressed = self.receiver_clear
         self.receiver_debug_button.whenPressed = self.morse_decoder.generate_plot
-
-        self.sender_box.when_value_edited = self.transmit_keyboard_char
-
         self.level_autotune_checkbox.whenToggled = self.toggle_level_autotune
         self.level_field.when_value_edited = self.set_level
         self.freq_autotune_checkbox.whenToggled = self.toggle_freq_autotune
@@ -121,8 +113,30 @@ class MainForm(npyscreen.FormWithMenus):
         self.wpm_autotune_checkbox.whenToggled = self.toggle_wpm_autotune
         self.wpm_field.when_value_edited = self.set_wpm
 
-    def afterEditing(self):
-        self.parentApp.setNextForm(None)
+
+    def add_sender_contorls_box(self):
+        # Sender Controls
+        self.sender_control_box = self.add(BoxTitleColor, name="Sender Controls", relx=3,
+                                           rely=self.receiver_control_box.rely + self.receiver_control_box.height, width=26,
+                                           scroll_exit=True, editable=False)
+
+    def add_receiver_log_box(self):
+        # Receiver Box
+        self.receiver_box = self.add(ReceiverPager, name="Receiver log", footer="Received text",
+                                     relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
+                                     rely=self.receiver_control_box.rely, max_height=int(self.lines/2 - 1), scroll_exit=True,
+                                     contained_widget_arguments={"maxlen": 10}
+                                     )
+        self.receiver_box.entry_widget.buffer(
+            [], scroll_end=True, scroll_if_editing=False)                             
+
+    def add_sender_log_box(self):
+        # Sender Box
+        self.sender_box = self.add(SenderBox, name="Sending log",
+                                   relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
+                                   editable=True, scroll_exit=True,
+                                   )
+        self.sender_box.when_value_edited = self.transmit_keyboard_char                           
 
     def receiver_start_stop(self):
         if self.receiver_is_running:

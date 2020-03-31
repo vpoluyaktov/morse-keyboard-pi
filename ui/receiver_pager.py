@@ -19,16 +19,16 @@ class ReceiverPager(BoxTitleColor):
         buffer = self.entry_widget.values
         buffer_string = "".join(buffer)
         buffer_string += text
-        while buffer_string[0] == '\n':
+        while buffer_string[0] == "---\n":
             buffer_string = buffer_string[1:] 
-        lines = buffer_string.split("\n")
+        lines = buffer_string.split("---\n")
 
         values = []
         for line in lines:
             if line != '':                
                 values.extend(self.wrapper.wrap(line))
                 if line != lines[-1]:
-                    values.append('\n')
+                    values.append("---\n")
         self.entry_widget.values = values
         self.entry_widget.buffer(
             [], scroll_end=True, scroll_if_editing=False)

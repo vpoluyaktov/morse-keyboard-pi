@@ -58,18 +58,19 @@ class MorseDecoder:
 
     frequency_history = []
     beep_duration_history = []
+    beep_duration_history_lenght = 10
     sound_level_history = []
     keep_history_sec = 5
     morse_ascii_history = ""
 
     keep_number_of_chunks = int(1000 / CHUNK_LENGTH_MS * keep_history_sec)
 
-    LETTER_TO_MORSE = {" ": "/", "A": "·-", "B": "-···", "C": "-·-·", "D": "-··", "E": "·", "F": "··-·", "G": "--·", "H": "····",
-                       "I": "··", "J": "·---", "K": "-·-", "L": "·-··", "M": "--", "N": "-·", "O": "---", "P": "·--·",
-                       "Q": "--·-", "R": "·-·", "S": "···", "T": "-", "U": "··-", "V": "···-", "W": "·--", "X": "-··-",
-                       "Y": "-·--", "Z": "--··", "1": "·----", "2": "··---", "3": "···--", "4": "····-", "5": "·····",
-                       "6": "-····", "7": "--···", "8": "---··", "9": "----·", "0": "-----", "?": "··--··",
-                       ".": "·-·-·-", ",": "--··--", "!": "-·-·--", "'": "·----·"}
+    LETTER_TO_MORSE = {" ": "/", "A": "·−", "B": "−···", "C": "−·−·", "D": "−··", "E": "·", "F": "··−·", "G": "−−·", "H": "····",
+                       "I": "··", "J": "·−−−", "K": "−·−", "L": "·−··", "M": "−−", "N": "−·", "O": "−−−", "P": "·−−·",
+                       "Q": "−−·−", "R": "·−·", "S": "···", "T": "−", "U": "··−", "V": "···−", "W": "·−−", "X": "−··−",
+                       "Y": "−·−−", "Z": "−−··", "1": "·−−−−", "2": "··−−−", "3": "···−−", "4": "····−", "5": "·····",
+                       "6": "−····", "7": "−−···", "8": "−−−··", "9": "−−−−·", "0": "−−−−−", "?": "··−−··",
+                       ".": "·−·−·−", ",": "−−··−−", "!": "−·−·−−", "'": "·−−−−·", "<BT>":"−···−"}
                        
 
     def __init__(self):
@@ -437,10 +438,10 @@ class MorseDecoder:
                     if counter >= self.dit_length_min and counter <= self.dit_length_max:
                         morse_ascii += "·"
                     elif counter >= self.dah_length_min and counter <= self.dah_length_max:
-                        morse_ascii += "-"
+                        morse_ascii += "−"
 
                     self.beep_duration_history.append(counter)
-                    self.beep_duration_history = self.beep_duration_history[-50:]
+                    self.beep_duration_history = self.beep_duration_history[-self.beep_duration_history_lenght:]
                     counter = 1
                     sounding = False
 
@@ -490,7 +491,7 @@ class MorseDecoder:
 
         if self.frequency_auto_tune and most_common_frequency >= self.FREQUENCY_LOW_LIMIT and most_common_frequency <= self.FREQUENCY_HIGH_LIMIT:
             if abs(self.frequency - most_common_frequency) > 10:
-                self.output_buffer +=  "\n"
+                self.output_buffer +=  "---\n"
             self.frequency = most_common_frequency
 
         self.frequency_min = int(
@@ -511,7 +512,7 @@ class MorseDecoder:
             self.calculate_timings()
             return ">{:2d}<".format(self.wpm)
 
-        if len(self.beep_duration_history) < 50:
+        if len(self.beep_duration_history) < self.beep_duration_history_lenght:
             return "?{:2d}?".format(self.wpm)
 
         histogram = Counter(self.beep_duration_history)
@@ -604,8 +605,6 @@ class MorseDecoder:
             wpm = int(round(1200 / dah_length_ms * 3, 0))
 
             if self.wpm_autotune and wpm >= 2 and wpm <= 35:
-                # if abs(self.wpm - wpm) > 5:
-                #     self.output_buffer += "\n" 
                 self.wpm = wpm
                 self.calculate_timings()
 
