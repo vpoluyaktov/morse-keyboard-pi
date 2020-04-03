@@ -5,3 +5,4 @@ morse_test.wav
 sound-data.wav
 sound-data.bin
 debug_plot.png
+*.log

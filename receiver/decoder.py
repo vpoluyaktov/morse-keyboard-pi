@@ -31,7 +31,7 @@ class MorseDecoder:
     sound_level_threshold = 1200
     sound_level_autotune = True
     SNR = 0.7
-    THRESHOLD_LOW_LIMIT = 50
+    THRESHOLD_LOW_LIMIT = 200
 
     smooth_window_len = 6
     smooth_window_type = 'blackman'
@@ -45,7 +45,7 @@ class MorseDecoder:
     frequency_auto_tune = True
     frequency_variance = 10  # percent
 
-    FREQUENCY_LOW_LIMIT = 300
+    FREQUENCY_LOW_LIMIT = 100
     FREQUENCY_HIGH_LIMIT = 1000
     frequency_min = int(frequency * ((100 - frequency_variance) / 100))
     frequency_max = int(frequency * ((100 + frequency_variance) / 100))
@@ -60,7 +60,7 @@ class MorseDecoder:
     beep_duration_history = []
     beep_duration_history_lenght = 10
     sound_level_history = []
-    keep_history_sec = 5
+    keep_history_sec = 1
     morse_ascii_history = ""
 
     keep_number_of_chunks = int(1000 / CHUNK_LENGTH_MS * keep_history_sec)
@@ -70,7 +70,9 @@ class MorseDecoder:
                        "Q": "−−·−", "R": "·−·", "S": "···", "T": "−", "U": "··−", "V": "···−", "W": "·−−", "X": "−··−",
                        "Y": "−·−−", "Z": "−−··", "1": "·−−−−", "2": "··−−−", "3": "···−−", "4": "····−", "5": "·····",
                        "6": "−····", "7": "−−···", "8": "−−−··", "9": "−−−−·", "0": "−−−−−", "?": "··−−··",
-                       ".": "·−·−·−", ",": "−−··−−", "!": "−·−·−−", "'": "·−−−−·", "<BT>":"−···−"}
+                       ".": "·−·−·−", ",": "−−··−−", "!": "−·−·−−", "'": "·−−−−·", "/": "−··−·", "&": "·−···",
+                       ":": "−−−···", ";": "−·−·−·", "+": "·−·−·", "-": "−····−", "\"": "·−··−·", "$": "···−··−",
+                       "@": "·−−·−·", "<AA>": "·−·−", "<BT>" :"−···−"}
                        
 
     def __init__(self):
@@ -260,7 +262,7 @@ class MorseDecoder:
                 self.graph_frequency_autotune_min.append(self.frequency_min)
                 self.graph_frequency_autotune_max.append(self.frequency_max)
 
-            # keep last 5 sec of frequency measurements
+            # keep last n sec of frequency measurements
             if frequency >= self.FREQUENCY_LOW_LIMIT and frequency <= self.FREQUENCY_HIGH_LIMIT:
                 self.frequency_history.append(round(frequency, 0))
                 self.frequency_history = self.frequency_history[-self.keep_number_of_chunks:]
@@ -490,7 +492,7 @@ class MorseDecoder:
                 1)[0]  # self.frequency_history = []
 
         if self.frequency_auto_tune and most_common_frequency >= self.FREQUENCY_LOW_LIMIT and most_common_frequency <= self.FREQUENCY_HIGH_LIMIT:
-            if abs(self.frequency - most_common_frequency) > 10:
+            if abs(self.frequency - most_common_frequency) > 25:
                 self.output_buffer +=  "---\n"
             self.frequency = most_common_frequency
 

@@ -4,10 +4,11 @@ import threading
 from queue import Queue
 import curses
 import time
+from datetime import datetime
 
 from receiver.listener import MorseListener
 from receiver.decoder import MorseDecoder
-from ui.receiver_pager import ReceiverPager
+from ui.log_pager import LogPager
 from ui.sender_multiline_edit import SenderBox
 from ui.box_title_color import BoxTitleColor
 from transmitter.keyboard_transmitter import KeyboardTransmitter
@@ -15,8 +16,8 @@ from transmitter.keyboard_transmitter import KeyboardTransmitter
 
 class MainForm(npyscreen.FormWithMenus):
     receiver_control_box = None
-    receiver_box = None
-    sender_box = None
+    log_box = None
+    sender_queue_box = None
     morse_listener = None
     morse_decoder = None
     listener_thread = None
@@ -37,8 +38,10 @@ class MainForm(npyscreen.FormWithMenus):
         self.add_receiver_device_control()
         self.add_receiver_controls_box()
         self.add_sender_contorls_box()
-        self.add_receiver_log_box()
-        self.add_sender_log_box()
+        self.add_log_box()
+        self.add_sender_queue_box()
+        self.add_transmit_box()
+        self.add_shortcut_box()
 
         # init decoder queue
         self.morse_decoder_queue = Queue(maxsize=1000)
@@ -68,6 +71,9 @@ class MainForm(npyscreen.FormWithMenus):
         self.receiver_start_stop_button = self.add(
             npyscreen.ButtonPress, name="[ Start receiver   ]", relx=self.receiver_control_box.relx + 1,
             rely=self.receiver_control_box.rely + 1)
+
+        self.receiver_save_log_button = self.add(
+            npyscreen.ButtonPress, name="[ Save log         ]", relx=self.receiver_control_box.relx + 1)
 
         self.receiver_clear_button = self.add(
             npyscreen.ButtonPress, name="[ Clear log        ]", relx=self.receiver_control_box.relx + 1)
@@ -104,7 +110,8 @@ class MainForm(npyscreen.FormWithMenus):
 
         # Control bindings
         self.receiver_start_stop_button.whenPressed = self.receiver_start_stop
-        self.receiver_clear_button.whenPressed = self.receiver_clear
+        self.receiver_save_log_button.whenPressed = self.communication_log_save
+        self.receiver_clear_button.whenPressed = self.communication_log_clear
         self.receiver_debug_button.whenPressed = self.morse_decoder.generate_plot
         self.level_autotune_checkbox.whenToggled = self.toggle_level_autotune
         self.level_field.when_value_edited = self.set_level
@@ -113,39 +120,66 @@ class MainForm(npyscreen.FormWithMenus):
         self.wpm_autotune_checkbox.whenToggled = self.toggle_wpm_autotune
         self.wpm_field.when_value_edited = self.set_wpm
 
-
     def add_sender_contorls_box(self):
         # Sender Controls
         self.sender_control_box = self.add(BoxTitleColor, name="Sender Controls", relx=3,
                                            rely=self.receiver_control_box.rely + self.receiver_control_box.height, width=26,
                                            scroll_exit=True, editable=False)
 
-    def add_receiver_log_box(self):
-        # Receiver Box
-        self.receiver_box = self.add(ReceiverPager, name="Receiver log", footer="Received text",
-                                     relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
-                                     rely=self.receiver_control_box.rely, max_height=int(self.lines/2 - 1), scroll_exit=True,
-                                     contained_widget_arguments={"maxlen": 10}
-                                     )
-        self.receiver_box.entry_widget.buffer(
-            [], scroll_end=True, scroll_if_editing=False)                             
+    def add_log_box(self):
+        # Log Box
+        self.log_box = self.add(LogPager, name="Communication log", footer="Communication log",
+                                relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
+                                rely=self.receiver_control_box.rely, max_height=int(self.lines/2 - 1), scroll_exit=True,
+                                contained_widget_arguments={"maxlen": 10}
+                                )
+        self.log_box.entry_widget.buffer(
+            [], scroll_end=True, scroll_if_editing=False)
 
-    def add_sender_log_box(self):
-        # Sender Box
-        self.sender_box = self.add(SenderBox, name="Sending log",
-                                   relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
-                                   editable=True, scroll_exit=True,
-                                   )
-        self.sender_box.when_value_edited = self.transmit_keyboard_char                           
+    def add_sender_queue_box(self):
+        # Sender Queue Box
+        self.sender_queue_box = self.add(SenderBox, name="Sender queue",
+                                         relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
+                                         max_height=int(self.lines/4 - 5),
+                                         editable=False, scroll_exit=False,
+                                         )
+
+    def add_transmit_box(self):
+        # Transmit
+        self.to_transmit_box = self.add(SenderBox, name="Text to transmit",
+                                        relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
+                                        max_height=int(self.lines/4 - 2),
+                                        editable=True, scroll_exit=False,
+                                        )
+        self.to_transmit_box.when_value_edited = self.transmit_keyboard_char
+
+    def add_shortcut_box(self):
+        # Shortcut Controls
+        self.shortcut_control_box = self.add(BoxTitleColor, name="Shortcut Controls",
+                                             relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
+                                             scroll_exit=True, editable=False)
+
+        self.scut_cq_button = self.add(
+            npyscreen.ButtonPress, name="[ CQ ]", relx=self.shortcut_control_box.relx + 1,
+            rely=self.shortcut_control_box.rely + 1)
+
+        self.scut_dx_button = self.add(
+            npyscreen.ButtonPress, name="[ DX ]", relx=self.scut_cq_button.relx + self.scut_cq_button.width + 1,
+            rely=self.shortcut_control_box.rely + 1)
+
+        self.scut_callsing_button = self.add(
+            npyscreen.ButtonPress, name="[ Call Sing ]", relx=self.scut_dx_button.relx + self.scut_dx_button.width + 1,
+            rely=self.shortcut_control_box.rely + 1)    
 
     def receiver_start_stop(self):
         if self.receiver_is_running:
             self.stop_receiver()
         elif self.receiver_select_device.value != None:
             self.start_receiver()
-        else: 
-            npyscreen.notify("You need to select audio device first", title="Error", form_color="CRITICAL")
-            time.sleep(2) 
+        else:
+            npyscreen.notify("You need to select audio device first",
+                             title="Error", form_color="CRITICAL")
+            time.sleep(2)
 
     def start_receiver(self):
         self.morse_decoder_queue.empty()
@@ -168,7 +202,7 @@ class MainForm(npyscreen.FormWithMenus):
     def while_waiting(self):
         decoded_string = self.morse_decoder.get_buffer()
         if decoded_string != "":
-            self.receiver_box.add_text(decoded_string)
+            self.log_box.add_text(decoded_string)
 
         frequency = self.morse_decoder.get_frequency()
         wpm = self.morse_decoder.get_wpm()
@@ -195,25 +229,25 @@ class MainForm(npyscreen.FormWithMenus):
 
         morse_ascii_history = self.morse_decoder.get_morse_ascii_history()
 
-        receiver_box_header = "Receiver log " + \
-            u'\u2500' * int(self.receiver_box.width - 86)
-        morse_ascii_history_length = self.receiver_box.width - \
-            len(receiver_box_header) - 14
+        commumication_box_header = "Communication log " + \
+            u'\u2500' * int(self.log_box.width - 86)
+        morse_ascii_history_length = self.log_box.width - \
+            len(commumication_box_header) - 14
         morse_ascii_history = morse_ascii_history[-morse_ascii_history_length:]
 
-        receiver_box_header += " [ {:" + \
+        commumication_box_header += " [ {:" + \
             str(morse_ascii_history_length) + "s}] "
-        self.receiver_box.name = receiver_box_header.format(
+        self.log_box.name = commumication_box_header.format(
             morse_ascii_history)
 
         receiver_box_footer = "[ Queue: {:3d} | Speed: {:s} wpm | Level: {:4d} | Freq: {:3.0f} KHz ]"
-        self.receiver_box.footer = receiver_box_footer.format(
+        self.log_box.footer = receiver_box_footer.format(
             self.morse_decoder_queue.qsize(), wpm, sound_level, frequency)
 
-        self.receiver_box.display()
+        self.log_box.display()
 
     def transmit_keyboard_char(self):
-        char_to_transmit = self.sender_box.value
+        char_to_transmit = self.sender_queue_box.value
         self.keyboard_transmit_queue.put(char_to_transmit)
 
     def toggle_level_autotune(self):
@@ -238,15 +272,20 @@ class MainForm(npyscreen.FormWithMenus):
         if self.wpm_field.value != "":
             self.morse_decoder.wpm = int(self.wpm_field.value)
 
-    def receiver_clear(self):
-        self.receiver_box.clear_text()
+    def communication_log_save(self):
+        file_name = datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + ".log"
+        f = open(file_name, 'w')
+        f.write(self.log_box.get_text())
+        f.close()
+
+    def communication_log_clear(self):
+        self.log_box.clear_text()
         self.morse_decoder.clear_morse_ascii_history()
 
     def receiver_refresh_device_list(self):
         receiver_device_list = [
             el[1] for el in self.morse_listener.get_devices_list()]
         self.receiver_select_device.values = receiver_device_list
-
 
     def receiver_change_device(self):
         selected_choice = self.receiver_select_device.value

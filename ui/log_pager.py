@@ -3,7 +3,7 @@ import textwrap
 from ui.box_title_color import BoxTitleColor
 
 
-class ReceiverPager(BoxTitleColor):
+class LogPager(BoxTitleColor):
 
     _contained_widget = npyscreen.BufferPager
     
@@ -33,6 +33,12 @@ class ReceiverPager(BoxTitleColor):
         self.entry_widget.buffer(
             [], scroll_end=True, scroll_if_editing=False)
         self.entry_widget.display()
+
+
+    def get_text(self):
+        buffer = self.entry_widget.values
+        buffer_string = "".join(buffer)
+        return buffer_string
 
     def clear_text(self):
         self.entry_widget.values = []
