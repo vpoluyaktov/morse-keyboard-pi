@@ -140,36 +140,69 @@ class MainForm(npyscreen.FormWithMenus):
         # Sender Queue Box
         self.sender_queue_box = self.add(SenderBox, name="Sender queue",
                                          relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
-                                         max_height=int(self.lines/4 - 5),
+                                         max_height=int(self.lines/4 - 5) + 1,
+                                         width=int(
+                                             self.columns - self.receiver_control_box.relx - self.receiver_control_box.width - 24),
                                          editable=False, scroll_exit=False,
                                          )
+
+        self.sender_queue_control_box = self.add(BoxTitleColor, name=None,
+                                                 relx=self.sender_queue_box.relx + self.sender_queue_box.width + 1,
+                                                 rely=self.sender_queue_box.rely,
+                                                 max_height=self.sender_queue_box.height,
+                                                 scroll_exit=True, editable=False)
+
+        self.send_pause_resume_button = self.add(
+            npyscreen.ButtonPress, name="[ Pause    ]",
+            relx=self.sender_queue_control_box.relx + 1,
+            rely=self.sender_queue_control_box.rely + 1)
+        self.clear_sender_queue_button = self.add(
+            npyscreen.ButtonPress, name="[ Clear    ]",
+            relx=self.sender_queue_control_box.relx + 1,
+            rely=self.sender_queue_control_box.rely + 2)
 
     def add_transmit_box(self):
         # Transmit
         self.to_transmit_box = self.add(SenderBox, name="Text to transmit",
                                         relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
+                                        rely=self.sender_queue_box.rely + self.sender_queue_box.height,
                                         max_height=int(self.lines/4 - 2),
+                                        width=int(
+                                            self.columns - self.receiver_control_box.relx - self.receiver_control_box.width - 24),
                                         editable=True, scroll_exit=False,
                                         )
         self.to_transmit_box.when_value_edited = self.transmit_keyboard_char
+
+        self.transmit_control_box = self.add(BoxTitleColor, name=None,
+                                             relx=self.to_transmit_box.relx + self.sender_queue_box.width + 1,
+                                             rely=self.to_transmit_box.rely,
+                                             height=self.to_transmit_box.height,
+                                             scroll_exit=True, editable=False)
+
+        self.send_transmit_text_button = self.add(
+            npyscreen.ButtonPress, name="[ Transmit ]",
+            relx=self.transmit_control_box.relx + 1,
+            rely=self.transmit_control_box.rely + 1)
 
     def add_shortcut_box(self):
         # Shortcut Controls
         self.shortcut_control_box = self.add(BoxTitleColor, name="Shortcut Controls",
                                              relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
+                                             rely=self.to_transmit_box.rely + self.to_transmit_box.height,
+                                             max_height=4,
                                              scroll_exit=True, editable=False)
 
-        self.scut_cq_button = self.add(
+        self.shortcut_cq_button = self.add(
             npyscreen.ButtonPress, name="[ CQ ]", relx=self.shortcut_control_box.relx + 1,
             rely=self.shortcut_control_box.rely + 1)
 
-        self.scut_dx_button = self.add(
-            npyscreen.ButtonPress, name="[ DX ]", relx=self.scut_cq_button.relx + self.scut_cq_button.width + 1,
+        self.shortcut_dx_button = self.add(
+            npyscreen.ButtonPress, name="[ DX ]", relx=self.shortcut_cq_button.relx + self.shortcut_cq_button.width + 1,
             rely=self.shortcut_control_box.rely + 1)
 
-        self.scut_callsing_button = self.add(
-            npyscreen.ButtonPress, name="[ Call Sing ]", relx=self.scut_dx_button.relx + self.scut_dx_button.width + 1,
-            rely=self.shortcut_control_box.rely + 1)    
+        self.shortcut_callsing_button = self.add(
+            npyscreen.ButtonPress, name="[ Call Sing ]", relx=self.shortcut_dx_button.relx + self.shortcut_dx_button.width + 1,
+            rely=self.shortcut_control_box.rely + 1)
 
     def receiver_start_stop(self):
         if self.receiver_is_running:
