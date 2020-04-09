@@ -28,8 +28,8 @@ warnings.filterwarnings("ignore", message="ALSA")
 
 class MorseDecoder:
 
-    sound_level_threshold = 1200
-    sound_level_autotune = True
+    sound_level_threshold = 400
+    sound_level_autotune = False
     SNR = 0.7
     THRESHOLD_LOW_LIMIT = 200
 
@@ -41,7 +41,7 @@ class MorseDecoder:
     wpm_variance = 35  # percent
     wpm_autotune = True
 
-    frequency = 650
+    frequency = 500
     frequency_auto_tune = True
     frequency_variance = 10  # percent
 
@@ -60,7 +60,7 @@ class MorseDecoder:
     beep_duration_history = []
     beep_duration_history_lenght = 10
     sound_level_history = []
-    keep_history_sec = 1
+    keep_history_sec = 3
     morse_ascii_history = ""
 
     keep_number_of_chunks = int(1000 / CHUNK_LENGTH_MS * keep_history_sec)
@@ -134,9 +134,9 @@ class MorseDecoder:
 
     def is_silent(self, sound_level):
         "Returns 'True' if below the 'silent' threshold"
-        if sound_level > self.THRESHOLD_LOW_LIMIT:
-            self.sound_level_history.append(int(sound_level))
-            self.sound_level_history = self.sound_level_history[-self.keep_number_of_chunks:]
+        #if sound_level >= self.THRESHOLD_LOW_LIMIT:
+        self.sound_level_history.append(int(sound_level))
+        self.sound_level_history = self.sound_level_history[-self.keep_number_of_chunks:]
         return sound_level < self.sound_level_threshold
 
     def signaltonoise(self, data, axis=0, ddof=0):

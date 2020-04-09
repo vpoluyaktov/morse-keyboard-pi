@@ -23,6 +23,7 @@ class MainForm(npyscreen.FormWithMenus):
     listener_thread = None
     decoder_thread = None
     receiver_is_running = False
+    is_transmitting = False
 
     def create(self):
         super(MainForm, self).create()
@@ -45,13 +46,6 @@ class MainForm(npyscreen.FormWithMenus):
 
         # init decoder queue
         self.morse_decoder_queue = Queue(maxsize=1000)
-
-        # init transmit queue
-        self.keyboard_transmit_queue = Queue(maxsize=1000)
-        self.keyboard_transmit_queue.empty()
-        self.keyboard_transmitter_thread = threading.Thread(target=self.keyboard_transmitter.transmit, args=(
-            self.keyboard_transmit_queue,), daemon=True)
-        self.keyboard_transmitter_thread.start()
 
     def afterEditing(self):
         self.parentApp.setNextForm(None)
@@ -171,7 +165,7 @@ class MainForm(npyscreen.FormWithMenus):
                                             self.columns - self.receiver_control_box.relx - self.receiver_control_box.width - 24),
                                         editable=True, scroll_exit=False,
                                         )
-        self.to_transmit_box.when_value_edited = self.transmit_keyboard_char
+        
 
         self.transmit_control_box = self.add(BoxTitleColor, name=None,
                                              relx=self.to_transmit_box.relx + self.sender_queue_box.width + 1,
@@ -183,10 +177,11 @@ class MainForm(npyscreen.FormWithMenus):
             npyscreen.ButtonPress, name="[ Transmit ]",
             relx=self.transmit_control_box.relx + 1,
             rely=self.transmit_control_box.rely + 1)
+        self.send_transmit_text_button.whenPressed = self.transmit_text
 
     def add_shortcut_box(self):
         # Shortcut Controls
-        self.shortcut_control_box = self.add(BoxTitleColor, name="Shortcut Controls",
+        self.shortcut_control_box = self.add(BoxTitleColor, name="Shortcuts",
                                              relx=self.receiver_control_box.relx + self.receiver_control_box.width + 2,
                                              rely=self.to_transmit_box.rely + self.to_transmit_box.height,
                                              max_height=4,
@@ -235,7 +230,18 @@ class MainForm(npyscreen.FormWithMenus):
     def while_waiting(self):
         decoded_string = self.morse_decoder.get_buffer()
         if decoded_string != "":
+            if self.is_transmitting:
+                decoded_string = "---\n" + decoded_string    
+            self.is_transmitting = False
             self.log_box.add_text(decoded_string)
+        transmitted_text = self.keyboard_transmitter.get_transmitted_text()
+        if transmitted_text != "":
+            self.is_receiving = False
+            if not self.is_transmitting:
+                transmitted_text = "---\n" + transmitted_text  
+                self.is_transmitting = True  
+            self.log_box.add_text(transmitted_text)
+
 
         frequency = self.morse_decoder.get_frequency()
         wpm = self.morse_decoder.get_wpm()
@@ -243,7 +249,8 @@ class MainForm(npyscreen.FormWithMenus):
 
         self.level_autotune_checkbox.value = self.morse_decoder.sound_level_autotune
         self.level_autotune_checkbox.display()
-        if self.morse_decoder.sound_level_autotune:
+        #if self.morse_decoder.sound_level_autotune:
+        if not self.level_field.editing:
             self.level_field.value = str(
                 self.morse_decoder.sound_level_threshold)
             self.level_field.display()
@@ -277,14 +284,24 @@ class MainForm(npyscreen.FormWithMenus):
         self.log_box.footer = receiver_box_footer.format(
             self.morse_decoder_queue.qsize(), wpm, sound_level, frequency)
 
-        self.log_box.display()
+        sender_queue = self.keyboard_transmitter.get_sender_queue()
+        self.sender_queue_box.value = sender_queue    
 
-    def transmit_keyboard_char(self):
-        char_to_transmit = self.sender_queue_box.value
-        self.keyboard_transmit_queue.put(char_to_transmit)
+        self.log_box.display()
+        self.sender_queue_box.display()
+
+    def transmit_text(self):
+        text_to_transmit = self.to_transmit_box.get_text()
+        self.keyboard_transmitter.transmit(text_to_transmit)
+        self.to_transmit_box.clear_text()
 
     def toggle_level_autotune(self):
         self.morse_decoder.sound_level_autotune = self.level_autotune_checkbox.value
+        if self.level_autotune_checkbox.value: 
+            npyscreen.notify("Enabling Sound Level autotuning may lead to many low level false detections",
+                             title="Warning", form_color="WARNING")
+            time.sleep(4)
+
 
     def set_level(self):
         if self.level_field.value != "":

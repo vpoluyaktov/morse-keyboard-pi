@@ -7,8 +7,7 @@ class SenderBox(BoxTitleColor):
     _contained_widget = npyscreen.MultiLineEdit
 
     def clear_text(self):   
-        self.entry_widget.values = []
-        self.entry_widget.buffer([], scroll_end=True, scroll_if_editing=True)
+        self.entry_widget.value = ""
         self.entry_widget.display()
 
 
@@ -27,3 +26,7 @@ class SenderBox(BoxTitleColor):
         self.entry_widget.buffer(
             [], scroll_end=True, scroll_if_editing=False)
         self.entry_widget.display()    
+
+
+    def get_text(self):
+        return self.entry_widget.value
