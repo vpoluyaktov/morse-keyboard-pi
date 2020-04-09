@@ -72,8 +72,7 @@ class MorseDecoder:
                        "6": "−····", "7": "−−···", "8": "−−−··", "9": "−−−−·", "0": "−−−−−", "?": "··−−··",
                        ".": "·−·−·−", ",": "−−··−−", "!": "−·−·−−", "'": "·−−−−·", "/": "−··−·", "&": "·−···",
                        ":": "−−−···", ";": "−·−·−·", "+": "·−·−·", "-": "−····−", "\"": "·−··−·", "$": "···−··−",
-                       "@": "·−−·−·", "<AA>": "·−·−", "<BT>" :"−···−"}
-                       
+                       "@": "·−−·−·", "<AA>": "·−·−", "<BT>": "−···−"}
 
     def __init__(self):
 
@@ -110,31 +109,31 @@ class MorseDecoder:
         # morse code timing
         self.dah_dot_ratio = 3
         self.dah_dit_ratio_variance = 15  # percent
-        self.dit_length_ms = int(1200 / self.wpm)
-        self.dah_length_ms = self.dit_length_ms * self.dah_dot_ratio
-        self.char_space_length_ms = self.dit_length_ms
-        self.letter_space_length_ms = self.dit_length_ms * self.dah_dot_ratio
-        self.word_space_length_ms = self.dit_length_ms * 7
+        self.dit_duration_ms = int(1200 / self.wpm)
+        self.dah_duratino_ms = self.dit_duration_ms * self.dah_dot_ratio
+        self.char_space_duration_ms = self.dit_duration_ms
+        self.letter_space_durarion_ms = self.dit_duration_ms * self.dah_dot_ratio
+        self.word_space_length_ms = self.dit_duration_ms * 7
 
         # morse code timing variances in frames
-        self.dit_length_min = int(
-            self.dit_length_ms * ((100 - self.wpm_variance) / 100) / self.CHUNK_LENGTH_MS)
-        self.dit_length_max = int(
-            self.dit_length_ms * ((100 + self.wpm_variance) / 100) / self.CHUNK_LENGTH_MS)
-        self.dah_length_min = self.dit_length_min * 3
-        self.dah_length_max = self.dit_length_max * 3
-        self.char_space_length_min = self.dit_length_min
-        self.char_space_length_max = self.dit_length_max
-        self.letter_space_length_min = self.dit_length_min * 3
-        self.letter_space_length_max = self.dit_length_max * 3
-        self.word_space_length_min = self.dit_length_min * 7
-        self.word_space_length_max = self.dit_length_max * 7
+        self.dit_length_chunks_min = int(
+            self.dit_duration_ms * ((100 - self.wpm_variance) / 100) / self.CHUNK_LENGTH_MS)
+        self.dit_length_chunks_max = int(
+            self.dit_duration_ms * ((100 + self.wpm_variance) / 100) / self.CHUNK_LENGTH_MS)
+        self.dah_length_chunks_min = self.dit_length_chunks_min * 3
+        self.dah_length_chunks_max = self.dit_length_chunks_max * 3
+        self.char_space_length_chunks_min = self.dit_length_chunks_min
+        self.char_space_length_chunks_max = self.dit_length_chunks_max
+        self.letter_space_length_chunks_min = self.dit_length_chunks_min * 3
+        self.letter_space_length_chunks_max = self.dit_length_chunks_max * 3
+        self.word_space_length_chunks_min = self.dit_length_chunks_min * 7
+        self.word_space_length_chunks_max = self.dit_length_chunks_max * 7
 
-        self.cutoff_threshold = self.letter_space_length_min  # process letter by letter
+        self.cutoff_threshold = self.letter_space_length_chunks_min  # process letter by letter
 
     def is_silent(self, sound_level):
         "Returns 'True' if below the 'silent' threshold"
-        #if sound_level >= self.THRESHOLD_LOW_LIMIT:
+        # if sound_level >= self.THRESHOLD_LOW_LIMIT:
         self.sound_level_history.append(int(sound_level))
         self.sound_level_history = self.sound_level_history[-self.keep_number_of_chunks:]
         return sound_level < self.sound_level_threshold
@@ -238,7 +237,8 @@ class MorseDecoder:
             if self.graph_is_saving:
                 self.graph_sound_level_data.append(sound_level)
                 self.get_sound_level()
-                self.graph_sound_level_autotune.append(self.sound_level_threshold)
+                self.graph_sound_level_autotune.append(
+                    self.sound_level_threshold)
 
             silent = self.is_silent(sound_level)
 
@@ -270,7 +270,7 @@ class MorseDecoder:
             if frequency >= self.frequency_min and frequency <= self.frequency_max:
                 self.graph_sound_sequence.append(1)
                 # check if this is a new character started
-                if num_silent >= self.letter_space_length_min and sound_started and syncronized:
+                if num_silent >= self.letter_space_length_chunks_min and sound_started and syncronized:
                     self.decode_morse_sequence(sound_sequence)
                     num_silent = 0
                     sound_sequence = []
@@ -288,7 +288,7 @@ class MorseDecoder:
                 self.graph_sound_sequence.append(0)
                 num_silent += 1
 
-            if num_silent >= self.word_space_length_min and sound_started:
+            if num_silent >= self.word_space_length_chunks_min and sound_started:
                 if sound_started and syncronized:
                     self.decode_morse_sequence(sound_sequence)
                 num_silent = 0
@@ -296,7 +296,7 @@ class MorseDecoder:
                 sound_started = False
                 syncronized = True
 
-        return            
+        return
 
     def generate_plot(self):
 
@@ -374,7 +374,7 @@ class MorseDecoder:
                     color=horizontal_lines_color)
         axs[3].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_autotune_max)),
                     self.graph_frequency_autotune_max, linewidth=horizontal_lines_width,
-                    color=horizontal_lines_color)                    
+                    color=horizontal_lines_color)
         axs[5].axhline(0.5 + self.smooth_cut_off_offset, linewidth=horizontal_lines_width,
                        color=horizontal_lines_color, linestyle='dotted')
 
@@ -414,7 +414,6 @@ class MorseDecoder:
         morse_sequence_restored = numpy.delete(morse_sequence_restored, 0)
         morse_sequence_restored = numpy.append(morse_sequence_restored, 0)
 
-
         counter = 0
         sounding = False
         morse_ascii = ""
@@ -423,9 +422,9 @@ class MorseDecoder:
                 if sounding:
                     counter += 1
                 else:  # a silence ended
-                    if counter >= self.char_space_length_min and counter <= self.char_space_length_max:
+                    if counter >= self.char_space_length_chunks_min and counter <= self.char_space_length_chunks_max:
                         None  # listascii += ""
-                    elif counter >= self.letter_space_length_min and counter <= self.letter_space_length_max:
+                    elif counter >= self.letter_space_length_chunks_min and counter <= self.letter_space_length_chunks_max:
                         morse_ascii += " "
 
                     counter = 1
@@ -433,13 +432,13 @@ class MorseDecoder:
             else:
                 if not sounding:
                     counter += 1
-                    if counter >= self.word_space_length_min:
+                    if counter >= self.word_space_length_chunks_min:
                         morse_ascii += " /"
                         counter = 1
                 else:  # a beep ended, let's decide is it dit or dah
-                    if counter >= self.dit_length_min and counter <= self.dit_length_max:
+                    if counter >= self.dit_length_chunks_min and counter <= self.dit_length_chunks_max:
                         morse_ascii += "·"
-                    elif counter >= self.dah_length_min and counter <= self.dah_length_max:
+                    elif counter >= self.dah_length_chunks_min and counter <= self.dah_length_chunks_max:
                         morse_ascii += "−"
 
                     self.beep_duration_history.append(counter)
@@ -479,12 +478,11 @@ class MorseDecoder:
             buffer = self.output_buffer
             self.last_returned_buffer = self.output_buffer
             self.output_buffer = ""
-        
-        return buffer    
+
+        return buffer
 
     def get_frequency(self):
         most_common_frequency = 0
-
 
         if len(self.frequency_history) > 0:
             histogram = Counter(self.frequency_history)
@@ -493,7 +491,7 @@ class MorseDecoder:
 
         if self.frequency_auto_tune and most_common_frequency >= self.FREQUENCY_LOW_LIMIT and most_common_frequency <= self.FREQUENCY_HIGH_LIMIT:
             if abs(self.frequency - most_common_frequency) > 25:
-                self.output_buffer +=  "---\n"
+                self.output_buffer += "---\n"
             self.frequency = most_common_frequency
 
         self.frequency_min = int(
@@ -546,11 +544,12 @@ class MorseDecoder:
             return "~{:2d}~".format(self.wpm)
 
         # get largest peak
-        largest_peak_duration = 0 
+        largest_peak_duration = 0
         largest_peak_index = peak_indexes[numpy.where(
             peak_counters == numpy.amax(peak_counters))[0]][0]
         largest_peak_duration = durations[largest_peak_index]
-        while largest_peak_duration < 3 and numpy.amax(peak_counters) > 0:  # remove too short beeps
+        # remove too short beeps
+        while largest_peak_duration < 3 and numpy.amax(peak_counters) > 0:
             # remove largest counter
             peak_counters[numpy.where(
                 peak_counters == numpy.amax(peak_counters))[0][0]] = 0
@@ -562,14 +561,14 @@ class MorseDecoder:
         # remove largest counter
         peak_counters[numpy.where(
             peak_counters == numpy.amax(peak_counters))[0][0]] = 0
-        second_peak_duration = 0     
-        while numpy.amax(peak_counters) > 0:    
-            # it looks like there is a bug here with second_peak_index calculation - sometimes it's bigger than the length 
+        second_peak_duration = 0
+        while numpy.amax(peak_counters) > 0:
+            # it looks like there is a bug here with second_peak_index calculation - sometimes it's bigger than the length
             # of the beep_duration array
             # need to investigate
             second_peak_index = peak_indexes[numpy.where(
                 peak_counters == numpy.amax(peak_counters))[0]][0]
-            second_peak_duration = durations[second_peak_index]    
+            second_peak_duration = durations[second_peak_index]
             if largest_peak_duration < second_peak_duration:
                 dit_duration = largest_peak_duration
                 dah_duration = second_peak_duration
@@ -577,17 +576,17 @@ class MorseDecoder:
                 dit_duration = second_peak_duration
                 dah_duration = largest_peak_duration
 
-            if dit_duration > 2: # remove too short beeps
+            if dit_duration > 2:  # remove too short beeps
                 dah_dit_ratio_detected = dah_duration / dit_duration
             else:
                 dah_dit_ratio_detected = 0
 
-            # check beep length calculation reliability          
+            # check beep length calculation reliability
             if dah_dit_ratio_detected >= self.dah_dot_ratio * (100 - self.dah_dit_ratio_variance) / 100 \
                     and dah_dit_ratio_detected <= self.dah_dot_ratio * (100 + self.dah_dit_ratio_variance) / 100:
-                wpm_reliable = True    
+                wpm_reliable = True
                 break
-            else: 
+            else:
                 peak_counters[numpy.where(
                     peak_counters == numpy.amax(peak_counters))[0][0]] = 0
 
@@ -597,7 +596,7 @@ class MorseDecoder:
                 [largest_peak_index, second_peak_index])
 
             if self.graph_is_saving:
-                self.graph_largest_peak_indexes = largest_peak_indexes  
+                self.graph_largest_peak_indexes = largest_peak_indexes
 
             dit_length_ms = dit_duration * self.CHUNK_LENGTH_MS
             dah_length_ms = dah_duration * self.CHUNK_LENGTH_MS
@@ -626,7 +625,7 @@ class MorseDecoder:
 
         return sound_level
 
-    def get_morse_ascii_history(self):    
+    def get_morse_ascii_history(self):
         return self.morse_ascii_history
 
     def clear_morse_ascii_history(self):

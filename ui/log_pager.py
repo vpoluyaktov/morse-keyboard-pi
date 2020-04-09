@@ -6,6 +6,7 @@ from ui.box_title_color import BoxTitleColor
 class LogPager(BoxTitleColor):
 
     _contained_widget = npyscreen.BufferPager
+    conversation_separator = "---\n"
     
     def add_text(self, text):
 
@@ -19,16 +20,16 @@ class LogPager(BoxTitleColor):
         buffer = self.entry_widget.values
         buffer_string = "".join(buffer)
         buffer_string += text
-        while buffer_string[0] == "---\n":
+        while buffer_string[0] == self.conversation_separator:
             buffer_string = buffer_string[1:] 
-        lines = buffer_string.split("---\n")
+        lines = buffer_string.split(self.conversation_separator)
 
         values = []
         for line in lines:
             if line != '':                
                 values.extend(self.wrapper.wrap(line))
                 if line != lines[-1]:
-                    values.append("---\n")
+                    values.append(self.conversation_separator)
         self.entry_widget.values = values
         self.entry_widget.buffer(
             [], scroll_end=True, scroll_if_editing=False)

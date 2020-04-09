@@ -1,10 +1,11 @@
 #!/usr/bin/python3
 import pygame
 import time
+import sys
 import gpiozero as gpio
 import _thread as thread
 from array import array
-from transmitter.morse_lookup import *
+from utils.morse_lookup import try_decode
 
 pygame.mixer.pre_init(44100, -16, 1, 1024)
 pygame.init()

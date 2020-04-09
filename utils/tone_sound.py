@@ -11,8 +11,8 @@ class ToneSound(pygame.mixer.Sound):
     def __init__(self):
 
         pygame.mixer.pre_init(44100, -16, 1, 1024)
-        #pygame.init()
-        #pygame.mixer.Sound.__init__(self, self.build_samples())
+        pygame.init()
+        pygame.mixer.Sound.__init__(self, self.build_samples())
 
     def build_samples(self):
         period = int(round(pygame.mixer.get_init()[0] / self.frequency))

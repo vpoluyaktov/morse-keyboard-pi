@@ -1,57 +1,45 @@
-#!/usr/bin/python3
+import numpy as np
+import pyaudio  
+import time
 
-import pygame
-from pygame.locals import *
+p = pyaudio.PyAudio()
 
-import math
-import numpy
+volume = 0.5     # range [0.0, 1.0]
+fs = 44100       # sampling rate, Hz, must be integer
+duration = 0.3   # in seconds, may be float
+f = 650.0        # sine frequency, Hz, may be float
 
-size = (1366, 720)
+# generate samples
+dash_duration = 0.3
+dit_duration = 0.1
 
-bits = 16
-#the number of channels specified here is NOT 
-#the channels talked about here http://www.pygame.org/docs/ref/mixer.html#pygame.mixer.get_num_channels
+samples_dit = (np.sin(2*np.pi*np.arange(fs*dit_duration)*f/fs)).astype(np.float32) * volume
+samples_dash = (np.sin(2*np.pi*np.arange(fs*dash_duration)*f/fs)).astype(np.float32) * volume
+samples_char_space = (np.sin(2*np.pi*np.arange(fs*dit_duration)*0/fs)).astype(np.float32) * volume
+samples_letter_space = (np.sin(2*np.pi*np.arange(fs*dit_duration*3)*0/fs)).astype(np.float32) * volume
+samples_word_space = (np.sin(2*np.pi*np.arange(fs*dit_duration*7)*0/fs)).astype(np.float32) * volume
 
-pygame.mixer.pre_init(44100, -bits, 2)
-pygame.init()
-_display_surf = pygame.display.set_mode(size, pygame.HWSURFACE | pygame.DOUBLEBUF)
+# for paFloat32 sample values must be in range [-1.0, 1.0]
+stream = p.open(format=pyaudio.paFloat32,
+                channels=1,
+                rate=fs,
+                output=True)
 
+# 
+char_samples = np.empty([0],dtype=np.float32)
+char_samples = np.concatenate((char_samples, samples_dit))
+char_samples = np.concatenate((char_samples, samples_char_space))
+char_samples = np.concatenate((char_samples, samples_dash))
+char_samples = np.concatenate((char_samples, samples_char_space))
+char_samples = np.concatenate((char_samples, samples_dit))
+char_samples = np.concatenate((char_samples, samples_char_space))
+char_samples = np.concatenate((char_samples, samples_dit))
+char_samples = np.concatenate((char_samples, samples_letter_space))
 
-duration = 1.0          # in seconds
-#freqency for the left speaker
-frequency_l = 440
-#frequency for the right speaker
-frequency_r = 550
-
-#this sounds totally different coming out of a laptop versus coming out of headphones
-
-sample_rate = 44100
-
-n_samples = int(round(duration*sample_rate))
-
-#setup our numpy array to handle 16 bit ints, which is what we set our mixer to expect with "bits" up above
-buf = numpy.zeros((n_samples, 2), dtype = numpy.int16)
-max_sample = 2**(bits - 1) - 1
-
-for s in range(n_samples):
-    t = float(s)/sample_rate    # time in seconds
-
-    #grab the x-coordinate of the sine wave at a given time, while constraining the sample to what our mixer is set to with "bits"
-    buf[s][0] = int(round(max_sample*math.sin(2*math.pi*frequency_l*t)))        # left
-    buf[s][1] = int(round(max_sample*0.5*math.sin(2*math.pi*frequency_r*t)))    # right
-
-sound = pygame.sndarray.make_sound(buf)
-#play once, then loop forever
-sound.play(loops = -1)
+stream.write(char_samples, len(char_samples))
 
 
-#This will keep the sound playing forever, the quit event handling allows the pygame window to close without crashing
-_running = True
-while _running:
+stream.stop_stream()
+stream.close()
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            _running = False
-            break
-
-pygame.quit()
+p.terminate()

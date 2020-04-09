@@ -150,10 +150,13 @@ class MainForm(npyscreen.FormWithMenus):
             npyscreen.ButtonPress, name="[ Pause    ]",
             relx=self.sender_queue_control_box.relx + 1,
             rely=self.sender_queue_control_box.rely + 1)
+        self.send_pause_resume_button.whenPressed = self.keyboard_transmitter_start_stop
+
         self.clear_sender_queue_button = self.add(
             npyscreen.ButtonPress, name="[ Clear    ]",
             relx=self.sender_queue_control_box.relx + 1,
             rely=self.sender_queue_control_box.rely + 2)
+        self.clear_sender_queue_button.whenPressed = self.keyboard_transmitter.clear_sender_queue
 
     def add_transmit_box(self):
         # Transmit
@@ -163,7 +166,7 @@ class MainForm(npyscreen.FormWithMenus):
                                         max_height=int(self.lines/4 - 2),
                                         width=int(
                                             self.columns - self.receiver_control_box.relx - self.receiver_control_box.width - 24),
-                                        editable=True, scroll_exit=False,
+                                        editable=True, scroll_exit=True,
                                         )
         
 
@@ -209,8 +212,16 @@ class MainForm(npyscreen.FormWithMenus):
                              title="Error", form_color="CRITICAL")
             time.sleep(2)
 
+    def keyboard_transmitter_start_stop(self):
+        if self.keyboard_transmitter.tranmitter_is_started:
+            self.keyboard_transmitter.stop_transmitter()
+            self.send_pause_resume_button.name="[ Resume   ]"
+        else:
+            self.keyboard_transmitter.start_transmitter()      
+            self.send_pause_resume_button.name="[ Pause    ]"    
+
     def start_receiver(self):
-        self.morse_decoder_queue.empty()
+        self.morse_decoder_queue.queue.clear()
         self.listener_thread = threading.Thread(target=self.morse_listener.listen, args=(
             self.morse_decoder_queue,), daemon=True)
         self.decoder_thread = threading.Thread(target=self.morse_decoder.decode, args=(
@@ -231,14 +242,14 @@ class MainForm(npyscreen.FormWithMenus):
         decoded_string = self.morse_decoder.get_buffer()
         if decoded_string != "":
             if self.is_transmitting:
-                decoded_string = "---\n" + decoded_string    
+                decoded_string = self.log_box.conversation_separator + decoded_string    
             self.is_transmitting = False
             self.log_box.add_text(decoded_string)
         transmitted_text = self.keyboard_transmitter.get_transmitted_text()
         if transmitted_text != "":
             self.is_receiving = False
             if not self.is_transmitting:
-                transmitted_text = "---\n" + transmitted_text  
+                transmitted_text = self.log_box.conversation_separator + transmitted_text  
                 self.is_transmitting = True  
             self.log_box.add_text(transmitted_text)
 
