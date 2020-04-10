@@ -73,8 +73,8 @@ class KeyboardTransmitter:
 
     def char_to_morse(self, char):
         morse_code = self.morse_lookup.get_code_by_char(char)
-        self.sounder.play_morse_code(morse_code)
-        time.sleep(self.sounder.dit_duration_ms/1000)
+        if morse_code != "":
+            self.sounder.play_morse_code(morse_code)
 
 
 

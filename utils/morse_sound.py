@@ -10,7 +10,11 @@ class MorseSound:
 
     volume = 0.5     # range [0.0, 1.0]
     fs = 44100       # sampling rate, Hz
-    f = 650.0        # sine frequency, Hz
+    f = 650.0        # beep frequency, Hz
+    f_silence = 0  # silence frequency, Hz
+
+    wpm = 35
+    dah_dot_ratio = 3
 
     # envelope N ms raised cosine
     attack_release_ms = 50
@@ -28,8 +32,6 @@ class MorseSound:
         self.generate_samples()
 
     def calcualate_timings(self):
-        self.wpm = 50
-        self.dah_dot_ratio = 3
         self.dit_duration_ms = int(1200 / self.wpm)
         self.dah_duration_ms = self.dit_duration_ms * self.dah_dot_ratio
 
@@ -40,9 +42,9 @@ class MorseSound:
         self.samples_dah = (np.sin(2 * np.pi * np.arange(self.fs * self.dah_duration_ms/1000)
                                    * self.f / self.fs)).astype(np.float32) * self.volume
 
-        self.samples_char_space = (np.sin(2*np.pi*np.arange(self.fs*self.dit_duration_ms/1000)*0/self.fs)).astype(np.float32)
-        self.samples_letter_space = (np.sin(2*np.pi*np.arange(self.fs*self.dit_duration_ms/1000*3)*0/self.fs)).astype(np.float32)
-        self.samples_word_space = (np.sin(2*np.pi*np.arange(self.fs*self.dit_duration_ms/1000*7)*0/self.fs)).astype(np.float32)     
+        self.samples_char_space = (np.sin(2*np.pi*np.arange(self.fs*self.dit_duration_ms/1000)*self.f_silence/self.fs)).astype(np.float32) * self.volume * 0.1
+        self.samples_letter_space = (np.sin(2*np.pi*np.arange(self.fs*self.dit_duration_ms*3/1000)*self.f_silence/self.fs)).astype(np.float32) * self.volume * 0.1
+        self.samples_word_space = (np.sin(2*np.pi*np.arange(self.fs*self.dit_duration_ms*(7-3)/1000)*self.f_silence/self.fs)).astype(np.float32) * self.volume * 0.1 
 
         # apply raised cosine envelope
         attack_release_frames = self.fs * self.dit_duration_ms/1000 * self.attack_release_ms / 1000
@@ -82,20 +84,22 @@ class MorseSound:
         self.stream.write(self.samples_dah)
 
     def play_morse_code(self, morse_code):
-        char_samples = np.empty([0],dtype=np.float32)
 
+        char_samples = np.empty([0],dtype=np.float32)
         for i, beep in enumerate(morse_code):
             if beep == "/": # space character
                 char_samples = np.concatenate((char_samples, self.samples_word_space))
             else: 
-                if i == 0: 
-                    # new character - put letter space first
-                    char_samples = np.concatenate((char_samples, self.samples_letter_space))
                 if beep == '·':
                     char_samples = np.concatenate((char_samples, self.samples_dit))
                 elif beep == '−':
                     char_samples = np.concatenate((char_samples, self.samples_dah))
-                char_samples = np.concatenate((char_samples, self.samples_char_space))    
+                   
+                if i < len(morse_code) - 1:
+                    char_samples = np.concatenate((char_samples, self.samples_char_space))
+                else:     
+                    # last beep - put letter space 
+                    char_samples = np.concatenate((char_samples, self.samples_letter_space))
                     
         self.stream.write(char_samples, len(char_samples))
 
