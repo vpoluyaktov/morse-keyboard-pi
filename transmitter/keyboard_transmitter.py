@@ -2,7 +2,8 @@
 
 # import libs
 try:
-    from utils.tone_sound import ToneSounder
+    from utils.morse_sound import MorseSound
+    from utils.morse_lookup import MorseLookup
     from array import array
     from queue import Queue
     import threading
@@ -10,7 +11,7 @@ try:
 
 
 except ImportError as error:
-    print("You have to install some extras in order to use this shell script:")
+    print("You have to install some extra python libraries in order to use this appication:")
     print(error)
     exit(1)    
 
@@ -22,7 +23,8 @@ class KeyboardTransmitter:
     sounder = None
 
     def __init__(self):
-        self.sounder = ToneSounder()
+        self.sounder = MorseSound()
+        self.morse_lookup = MorseLookup()
         # init transmit queue
         self.keyboard_transmit_queue = Queue(maxsize=10000)
         
@@ -69,9 +71,9 @@ class KeyboardTransmitter:
         self.transmitted_text = ""
         return text
 
-
     def char_to_morse(self, char):
-        self.sounder.play_char("L")
+        morse_code = self.morse_lookup.get_code_by_char(char)
+        self.sounder.play_morse_code(morse_code)
         time.sleep(self.sounder.dit_duration_ms/1000)
 
 

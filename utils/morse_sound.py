@@ -6,7 +6,7 @@ import time
 import matplotlib.pyplot as plt
 
 
-class ToneSounder:
+class MorseSound:
 
     volume = 0.5     # range [0.0, 1.0]
     fs = 44100       # sampling rate, Hz
@@ -28,7 +28,7 @@ class ToneSounder:
         self.generate_samples()
 
     def calcualate_timings(self):
-        self.wpm = 40
+        self.wpm = 50
         self.dah_dot_ratio = 3
         self.dit_duration_ms = int(1200 / self.wpm)
         self.dah_duration_ms = self.dit_duration_ms * self.dah_dot_ratio
@@ -81,16 +81,22 @@ class ToneSounder:
     def play_dah(self):
         self.stream.write(self.samples_dah)
 
-    def play_char(self, char):
+    def play_morse_code(self, morse_code):
         char_samples = np.empty([0],dtype=np.float32)
-        char_samples = np.concatenate((char_samples, self.samples_dit))
-        char_samples = np.concatenate((char_samples, self.samples_char_space))
-        char_samples = np.concatenate((char_samples, self.samples_dah))
-        char_samples = np.concatenate((char_samples, self.samples_char_space))
-        char_samples = np.concatenate((char_samples, self.samples_dit))
-        char_samples = np.concatenate((char_samples, self.samples_char_space))
-        char_samples = np.concatenate((char_samples, self.samples_dit))
-        char_samples = np.concatenate((char_samples, self.samples_letter_space))
+
+        for i, beep in enumerate(morse_code):
+            if beep == "/": # space character
+                char_samples = np.concatenate((char_samples, self.samples_word_space))
+            else: 
+                if i == 0: 
+                    # new character - put letter space first
+                    char_samples = np.concatenate((char_samples, self.samples_letter_space))
+                if beep == '·':
+                    char_samples = np.concatenate((char_samples, self.samples_dit))
+                elif beep == '−':
+                    char_samples = np.concatenate((char_samples, self.samples_dah))
+                char_samples = np.concatenate((char_samples, self.samples_char_space))    
+                    
         self.stream.write(char_samples, len(char_samples))
 
     def destroy(self):
