@@ -13,8 +13,8 @@ duration = 0.3   # in seconds, may be float
 f = 652.0        # sine frequency, Hz, may be float
 
 # generate samples
-dah_duration = 0.3
-dit_duration = 0.1
+dah_duration = 0.15
+dit_duration = 0.05
 
 # envelope N ms raised cosine 
 attack_release_ms = 50

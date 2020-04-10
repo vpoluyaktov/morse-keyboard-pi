@@ -2,7 +2,7 @@
 
 # import libs
 try:
-    from utils.tone_sound import ToneSound
+    from utils.tone_sound import ToneSounder
     from array import array
     from queue import Queue
     import threading
@@ -22,8 +22,8 @@ class KeyboardTransmitter:
     sounder = None
 
     def __init__(self):
-        # self.sounder = ToneSound()
-         # init transmit queue
+        self.sounder = ToneSounder()
+        # init transmit queue
         self.keyboard_transmit_queue = Queue(maxsize=10000)
         
     def start_transmitter(self):
@@ -71,10 +71,8 @@ class KeyboardTransmitter:
 
 
     def char_to_morse(self, char):
-        #self.sounder.start_beep()
-        #time.sleep(50/1000)
-        #self.sounder.stop_beep()
-        time.sleep(1)
+        self.sounder.play_char("L")
+        time.sleep(self.sounder.dit_duration_ms/1000)
 
 
 
