@@ -1,5 +1,3 @@
-#!/usr/bin/python3
-
 class MorseLookup:
     morse_code_table = {
         " ":    "/",

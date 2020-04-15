@@ -7,7 +7,9 @@ import warnings
 import wave
 from time import sleep
 from queue import Queue
-import numpy
+import numpy as np
+
+from utils.config import Config
 
 warnings.filterwarnings("ignore", message="divide by zero encountered")
 warnings.filterwarnings("ignore", message="invalid value encountered")
@@ -17,33 +19,13 @@ warnings.filterwarnings("ignore", message="ALSA")
 
 class MorseDecoder:
 
-    sound_level_threshold = 400
-    sound_level_autotune = False
-    SNR = 0.7
-    THRESHOLD_LOW_LIMIT = 200
+    config = Config()
 
-    smooth_window_len = 6
-    smooth_window_type = 'blackman'
-    smooth_cut_off_offset = 0.0
+    frequency_min = int(config.receiver_frequency  * ((100 - config.frequency_variance) / 100))
+    frequency_max = int(config.receiver_frequency  * ((100 + config.frequency_variance) / 100))
 
-    wpm = 20
-    wpm_variance = 35  # percent
-    wpm_autotune = True
-
-    frequency = 500
-    frequency_auto_tune = True
-    frequency_variance = 10  # percent
-
-    FREQUENCY_LOW_LIMIT = 100
-    FREQUENCY_HIGH_LIMIT = 1000
-    frequency_min = int(frequency * ((100 - frequency_variance) / 100))
-    frequency_max = int(frequency * ((100 + frequency_variance) / 100))
-
-    RATE = 44100  # frames per a second
-    CHUNK_LENGTH_MS = 5
-
-    chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
-    window = numpy.blackman(chunk)
+    chunk = int(config.RATE  / 1000 * config.CHUNK_LENGTH_MS)
+    window = np.blackman(chunk)
 
     frequency_history = []
     beep_duration_history = []
@@ -52,7 +34,7 @@ class MorseDecoder:
     keep_history_sec = 3
     morse_ascii_history = ""
 
-    keep_number_of_chunks = int(1000 / CHUNK_LENGTH_MS * keep_history_sec)
+    keep_number_of_chunks = int(1000 / config.CHUNK_LENGTH_MS * keep_history_sec)
 
     LETTER_TO_MORSE = {" ": "/", "A": "·−", "B": "−···", "C": "−·−·", "D": "−··", "E": "·", "F": "··−·", "G": "−−·", "H": "····",
                        "I": "··", "J": "·−−−", "K": "−·−", "L": "·−··", "M": "−−", "N": "−·", "O": "−−−", "P": "·−−·",
@@ -79,10 +61,10 @@ class MorseDecoder:
         self.graph_sound_sequence = []
         self.graph_sound_sequence_smoothed = []
         self.graph_sound_sequence_restored = []
-        self.graph_sound_level_autotune = []
+        self.graph_sound_level_threshold = []
         self.graph_frequency_autotune_min = []
         self.graph_frequency_autotune_max = []
-        self.graph_beep_duration = numpy.zeros(shape=(2, 1))
+        self.graph_beep_duration = np.zeros(shape=(2, 1))
         self.graph_all_peak_indexes = []
         self.graph_largest_peak_indexes = []
         self.graph_number_of_chunks_collected = 0
@@ -98,7 +80,7 @@ class MorseDecoder:
         # morse code timing
         self.dah_dot_ratio = 3
         self.dah_dit_ratio_variance = 15  # percent
-        self.dit_duration_ms = int(1200 / self.wpm)
+        self.dit_duration_ms = int(1200 / self.config.receiver_wpm)
         self.dah_duratino_ms = self.dit_duration_ms * self.dah_dot_ratio
         self.char_space_duration_ms = self.dit_duration_ms
         self.letter_space_durarion_ms = self.dit_duration_ms * self.dah_dot_ratio
@@ -106,9 +88,9 @@ class MorseDecoder:
 
         # morse code timing variances in frames
         self.dit_length_chunks_min = int(
-            self.dit_duration_ms * ((100 - self.wpm_variance) / 100) / self.CHUNK_LENGTH_MS)
+            self.dit_duration_ms * ((100 - self.config.wpm_variance) / 100) / self.config.CHUNK_LENGTH_MS)
         self.dit_length_chunks_max = int(
-            self.dit_duration_ms * ((100 + self.wpm_variance) / 100) / self.CHUNK_LENGTH_MS)
+            self.dit_duration_ms * ((100 + self.config.wpm_variance) / 100) / self.config.CHUNK_LENGTH_MS)
         self.dah_length_chunks_min = self.dit_length_chunks_min * 3
         self.dah_length_chunks_max = self.dit_length_chunks_max * 3
         self.char_space_length_chunks_min = self.dit_length_chunks_min
@@ -122,18 +104,18 @@ class MorseDecoder:
 
     def is_silent(self, sound_level):
         "Returns 'True' if below the 'silent' threshold"
-        # if sound_level >= self.THRESHOLD_LOW_LIMIT:
+        # if sound_level >= self.config.THRESHOLD_LOW_LIMIT:
         self.sound_level_history.append(int(sound_level))
         self.sound_level_history = self.sound_level_history[-self.keep_number_of_chunks:]
-        return sound_level < self.sound_level_threshold
+        return sound_level < self.config.sound_level_threshold
 
     def signaltonoise(self, data, axis=0, ddof=0):
-        data = numpy.asanyarray(data)
+        data = np.asanyarray(data)
         m = data.mean(axis)
         sd = data.std(axis=axis, ddof=ddof)
-        snr_array = numpy.where(sd == 0, 0, m / sd)
+        snr_array = np.where(sd == 0, 0, m / sd)
         snr = snr_array.tolist()
-        # snr = numpy.log10(snr)
+        # snr = np.log10(snr)
         return snr
 
     def normalize(self, snd_data):
@@ -162,15 +144,15 @@ class MorseDecoder:
             raise ValueError(
                 "Window is on of 'flat', 'hanning', 'hamming', 'bartlett', 'blackman'")
 
-        s = numpy.r_[array[window_len-1:0:-1],
+        s = np.r_[array[window_len-1:0:-1],
                      array, array[-2:-window_len-1:-1]]
 
         if window_type == 'flat':  # moving average
-            window_array = numpy.ones(window_len, 'd')
+            window_array = np.ones(window_len, 'd')
         else:
-            window_array = eval('numpy.'+window_type+'(window_len)')
+            window_array = eval('np.'+window_type+'(window_len)')
 
-        smoothed_array = numpy.convolve(
+        smoothed_array = np.convolve(
             window_array/window_array.sum(), s, mode='valid')
 
         # adjust the array length
@@ -189,7 +171,7 @@ class MorseDecoder:
             sound_data = morse_decoder_queue.get()
 
             if self.graph_is_saving:
-                if self.graph_number_of_chunks_collected >= int(self.graph_save_sec / self.CHUNK_LENGTH_MS * 1000):
+                if self.graph_number_of_chunks_collected >= int(self.graph_save_sec / self.config.CHUNK_LENGTH_MS * 1000):
                     self.graph_is_saving = False
                     self.save_plot()
                 else:
@@ -208,15 +190,15 @@ class MorseDecoder:
             # sample_width = p.get_sample_size(self.FORMAT)
 
             # find frequency of each chunk
-            indata = numpy.array(wave.struct.unpack(
+            indata = np.array(wave.struct.unpack(
                 "%dh" % (self.chunk), sound_data)) * self.window
             if self.graph_is_saving:
-                self.graph_indata = numpy.append(self.graph_indata, indata)
+                self.graph_indata = np.append(self.graph_indata, indata)
 
             # take fft and square each value
-            fft_data_square = abs(numpy.fft.rfft(indata)) ** 2
+            fft_data_square = abs(np.fft.rfft(indata)) ** 2
             if self.graph_is_saving:
-                self.graph_fft_data = numpy.append(
+                self.graph_fft_data = np.append(
                     self.graph_fft_data, fft_data_square)
 
             # find the maximum
@@ -226,8 +208,8 @@ class MorseDecoder:
             if self.graph_is_saving:
                 self.graph_sound_level_data.append(sound_level)
                 self.get_sound_level()
-                self.graph_sound_level_autotune.append(
-                    self.sound_level_threshold)
+                self.graph_sound_level_threshold.append(
+                    self.config.sound_level_threshold)
 
             silent = self.is_silent(sound_level)
 
@@ -235,15 +217,15 @@ class MorseDecoder:
                 frequency = 0
             elif which != len(fft_data_square) - 1:
                 try:
-                    y0, y1, y2 = numpy.log(
+                    y0, y1, y2 = np.log(
                         fft_data_square[which - 1:which + 2:])
                     x1 = (y2 - y0) * .5 / (2 * y1 - y2 - y0)
                     # find the frequency and output it
-                    frequency = (which + x1) * self.RATE / self.chunk
+                    frequency = (which + x1) * self.config.RATE / self.chunk
                 except RuntimeWarning:
                     None
             else:
-                frequency = which * self.RATE / self.chunk
+                frequency = which * self.config.RATE / self.chunk
 
             if self.graph_is_saving:
                 self.graph_frequency_data.append(frequency)
@@ -252,7 +234,7 @@ class MorseDecoder:
                 self.graph_frequency_autotune_max.append(self.frequency_max)
 
             # keep last n sec of frequency measurements
-            if frequency >= self.FREQUENCY_LOW_LIMIT and frequency <= self.FREQUENCY_HIGH_LIMIT:
+            if frequency >= self.config.FREQUENCY_LOW_LIMIT and frequency <= self.config.FREQUENCY_HIGH_LIMIT:
                 self.frequency_history.append(round(frequency, 0))
                 self.frequency_history = self.frequency_history[-self.keep_number_of_chunks:]
 
@@ -290,14 +272,14 @@ class MorseDecoder:
     def generate_plot(self):
 
         self.graph_sound_data = []
-        self.graph_indata = numpy.empty((0, 3), float)
-        self.graph_fft_data = numpy.empty((0, 3), float)
+        self.graph_indata = np.empty((0, 3), float)
+        self.graph_fft_data = np.empty((0, 3), float)
         self.graph_frequency_data = []
         self.graph_sound_level_data = []
         self.graph_sound_sequence = []
         self.graph_sound_sequence_smoothed = []
         self.graph_sound_sequence_restored = []
-        self.graph_sound_level_autotune = []
+        self.graph_sound_level_threshold = []
         self.graph_frequency_autotune_min = []
         self.graph_frequency_autotune_max = []
         self.graph_number_of_chunks_collected = 0
@@ -327,23 +309,23 @@ class MorseDecoder:
 
         lines_color = 'r'
         line_width = 0.5
-        axs[0].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_indata)), self.graph_indata,
+        axs[0].plot(np.linspace(0, self.graph_save_sec, len(self.graph_indata)), self.graph_indata,
                     linewidth=line_width, color=lines_color)
-        axs[1].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_fft_data)), self.graph_fft_data, linewidth=line_width,
+        axs[1].plot(np.linspace(0, self.graph_save_sec, len(self.graph_fft_data)), self.graph_fft_data, linewidth=line_width,
                     color=lines_color)
-        axs[2].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_level_data)), self.graph_sound_level_data,
+        axs[2].plot(np.linspace(0, self.graph_save_sec, len(self.graph_sound_level_data)), self.graph_sound_level_data,
                     linewidth=line_width, color=lines_color)
-        axs[3].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_data)), self.graph_frequency_data,
+        axs[3].plot(np.linspace(0, self.graph_save_sec, len(self.graph_frequency_data)), self.graph_frequency_data,
                     linewidth=line_width, color=lines_color)
-        axs[4].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_sequence)),
+        axs[4].plot(np.linspace(0, self.graph_save_sec, len(self.graph_sound_sequence)),
                     self.graph_sound_sequence, linewidth=line_width * 2, color=lines_color)
-        self.graph_sound_sequence_smoothed = self.smooth_array(numpy.array(
-            self.graph_sound_sequence, dtype=numpy.float64), window_len=self.smooth_window_len, window_type=self.smooth_window_type)
-        axs[5].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_sequence_smoothed)), self.graph_sound_sequence_smoothed,
+        self.graph_sound_sequence_smoothed = self.smooth_array(np.array(
+            self.graph_sound_sequence, dtype=np.float64), window_len=self.config.smooth_window_len, window_type=self.config.smooth_window_type)
+        axs[5].plot(np.linspace(0, self.graph_save_sec, len(self.graph_sound_sequence_smoothed)), self.graph_sound_sequence_smoothed,
                     linewidth=line_width, color=lines_color)
-        self.graph_sound_sequence_restored = numpy.around(
-            self.graph_sound_sequence_smoothed - self.smooth_cut_off_offset).astype(int)
-        axs[6].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_sequence_restored)),
+        self.graph_sound_sequence_restored = np.around(
+            self.graph_sound_sequence_smoothed - self.config.smooth_cut_off_offset).astype(int)
+        axs[6].plot(np.linspace(0, self.graph_save_sec, len(self.graph_sound_sequence_restored)),
                     self.graph_sound_sequence_restored, linewidth=line_width * 2, color=lines_color)
         axs[7].plot(self.graph_beep_duration[0], self.graph_beep_duration[1],
                     linewidth=line_width * 2, color=lines_color)
@@ -355,23 +337,23 @@ class MorseDecoder:
         horizontal_lines_width = 0.5
         horizontal_lines_color = 'b'
 
-        axs[2].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_sound_level_autotune)),
-                    self.graph_sound_level_autotune,
+        axs[2].plot(np.linspace(0, self.graph_save_sec, len(self.graph_sound_level_threshold)),
+                    self.graph_sound_level_threshold,
                     linewidth=horizontal_lines_width, color=horizontal_lines_color)
-        axs[3].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_autotune_min)),
+        axs[3].plot(np.linspace(0, self.graph_save_sec, len(self.graph_frequency_autotune_min)),
                     self.graph_frequency_autotune_min, linewidth=horizontal_lines_width,
                     color=horizontal_lines_color)
-        axs[3].plot(numpy.linspace(0, self.graph_save_sec, len(self.graph_frequency_autotune_max)),
+        axs[3].plot(np.linspace(0, self.graph_save_sec, len(self.graph_frequency_autotune_max)),
                     self.graph_frequency_autotune_max, linewidth=horizontal_lines_width,
                     color=horizontal_lines_color)
-        axs[5].axhline(0.5 + self.smooth_cut_off_offset, linewidth=horizontal_lines_width,
+        axs[5].axhline(0.5 + self.config.smooth_cut_off_offset, linewidth=horizontal_lines_width,
                        color=horizontal_lines_color, linestyle='dotted')
 
         if self.graph_save_sec <= 1:
             vertical_lines_width = 0.2
             vertical_lines_color = 'k'
-            vertical_marks = numpy.arange(
-                0, self.graph_save_sec + self.CHUNK_LENGTH_MS / 1000, self.CHUNK_LENGTH_MS / 1000)
+            vertical_marks = np.arange(
+                0, self.graph_save_sec + self.config.CHUNK_LENGTH_MS / 1000, self.config.CHUNK_LENGTH_MS / 1000)
             for plot_index in range(0, 6+1):
                 for x in vertical_marks:
                     axs[plot_index].axvline(x, linewidth=vertical_lines_width,
@@ -381,8 +363,8 @@ class MorseDecoder:
                             top=0.95, bottom=0.05, wspace=0.2, hspace=0.4)
 
         fig.savefig("debug_plot.png")
-        # numpy.savetxt('data.csv', numpy.array(
-        #     self.beep_duration_history, dtype=numpy.int16), fmt='%d', delimiter=',')
+        # np.savetxt('data.csv', np.array(
+        #     self.beep_duration_history, dtype=np.int16), fmt='%d', delimiter=',')
 
     def decode_morse_sequence(self, morse_sequence):
         # print(list)
@@ -390,18 +372,18 @@ class MorseDecoder:
         line_breakers = ".?!"
         last_character = ""
 
-        morse_sequence = numpy.array(morse_sequence)
+        morse_sequence = np.array(morse_sequence)
 
         # smooth array
-        morse_sequence_smoothed = self.smooth_array(numpy.array(
-            morse_sequence, dtype=numpy.float64), window_len=self.smooth_window_len, window_type=self.smooth_window_type)
+        morse_sequence_smoothed = self.smooth_array(np.array(
+            morse_sequence, dtype=np.float64), window_len=self.config.smooth_window_len, window_type=self.config.smooth_window_type)
 
         # restore array
-        morse_sequence_restored = numpy.around(
-            morse_sequence_smoothed - self.smooth_cut_off_offset).astype(int)
+        morse_sequence_restored = np.around(
+            morse_sequence_smoothed - self.config.smooth_cut_off_offset).astype(int)
         # correct the array after restore
-        morse_sequence_restored = numpy.delete(morse_sequence_restored, 0)
-        morse_sequence_restored = numpy.append(morse_sequence_restored, 0)
+        morse_sequence_restored = np.delete(morse_sequence_restored, 0)
+        morse_sequence_restored = np.append(morse_sequence_restored, 0)
 
         counter = 0
         sounding = False
@@ -478,37 +460,37 @@ class MorseDecoder:
             (most_common_frequency, count) = histogram.most_common(
                 1)[0]  # self.frequency_history = []
 
-        if self.frequency_auto_tune and most_common_frequency >= self.FREQUENCY_LOW_LIMIT and most_common_frequency <= self.FREQUENCY_HIGH_LIMIT:
-            if abs(self.frequency - most_common_frequency) > 25:
-                self.output_buffer += "---\n"
-            self.frequency = most_common_frequency
+        if self.config.frequency_auto_tune and most_common_frequency >= self.config.FREQUENCY_LOW_LIMIT and most_common_frequency <= self.config.FREQUENCY_HIGH_LIMIT:
+            if abs(self.config.receiver_frequency - most_common_frequency) > 25:
+                self.output_buffer += self.config.MESSAGE_SEPARATOR
+            self.config.receiver_frequency = most_common_frequency
 
         self.frequency_min = int(
-            self.frequency * ((100 - self.frequency_variance) / 100))
+            self.config.receiver_frequency * ((100 - self.config.frequency_variance) / 100))
         self.frequency_max = int(
-            self.frequency * ((100 + self.frequency_variance) / 100))
+            self.config.receiver_frequency * ((100 + self.config.frequency_variance) / 100))
 
-        if self.frequency_auto_tune:
+        if self.config.frequency_auto_tune:
             return most_common_frequency
         else:
-            return self.frequency
+            return self.config.receiver_frequency
 
     def get_wpm(self):
 
-        wpm_reliable = False
+        self.config.wpm_reliable = False
 
-        if not self.wpm_autotune:
+        if not self.config.wpm_autotune:
             self.calculate_timings()
-            return ">{:2d}<".format(self.wpm)
+            return ">{:2d}<".format(self.config.receiver_wpm)
 
         if len(self.beep_duration_history) < self.beep_duration_history_lenght:
-            return "?{:2d}?".format(self.wpm)
+            return "?{:2d}?".format(self.config.receiver_wpm)
 
         histogram = Counter(self.beep_duration_history)
 
         # sort and transpose the histogram
         beep_durations = sorted(histogram.items())
-        beep_durations = numpy.array(beep_durations)
+        beep_durations = np.array(beep_durations)
         beep_durations = beep_durations.transpose()
 
         if self.graph_is_saving:
@@ -518,45 +500,45 @@ class MorseDecoder:
         counters = beep_durations[1]
 
         tolerance = 0.75
-        diffs = numpy.diff(counters)
-        extrema = numpy.where(diffs > tolerance)[0] + 1
-        peak_indexes = numpy.append(extrema, 0)
+        diffs = np.diff(counters)
+        extrema = np.where(diffs > tolerance)[0] + 1
+        peak_indexes = np.append(extrema, 0)
         peak_counters = counters[peak_indexes]
 
         if self.graph_is_saving:
             self.graph_all_peak_indexes = peak_indexes
 
-        # all_peak_indexes = numpy.where(
+        # all_peak_indexes = np.where(
         #     (y[1:-1] > y[0:-2]) * (y[1:-1] > y[2:]))[0] + 1
 
         if (len(peak_indexes)) < 2:
-            return "~{:2d}~".format(self.wpm)
+            return "~{:2d}~".format(self.config.receiver_wpm)
 
         # get largest peak
         largest_peak_duration = 0
-        largest_peak_index = peak_indexes[numpy.where(
-            peak_counters == numpy.amax(peak_counters))[0]][0]
+        largest_peak_index = peak_indexes[np.where(
+            peak_counters == np.amax(peak_counters))[0]][0]
         largest_peak_duration = durations[largest_peak_index]
         # remove too short beeps
-        while largest_peak_duration < 3 and numpy.amax(peak_counters) > 0:
+        while largest_peak_duration < 3 and np.amax(peak_counters) > 0:
             # remove largest counter
-            peak_counters[numpy.where(
-                peak_counters == numpy.amax(peak_counters))[0][0]] = 0
-            largest_peak_index = peak_indexes[numpy.where(
-                peak_counters == numpy.amax(peak_counters))[0]][0]
+            peak_counters[np.where(
+                peak_counters == np.amax(peak_counters))[0][0]] = 0
+            largest_peak_index = peak_indexes[np.where(
+                peak_counters == np.amax(peak_counters))[0]][0]
             largest_peak_duration = durations[largest_peak_index]
 
         # try to find second peek so dah/dit ration ~= 3
         # remove largest counter
-        peak_counters[numpy.where(
-            peak_counters == numpy.amax(peak_counters))[0][0]] = 0
+        peak_counters[np.where(
+            peak_counters == np.amax(peak_counters))[0][0]] = 0
         second_peak_duration = 0
-        while numpy.amax(peak_counters) > 0:
+        while np.amax(peak_counters) > 0:
             # it looks like there is a bug here with second_peak_index calculation - sometimes it's bigger than the length
             # of the beep_duration array
             # need to investigate
-            second_peak_index = peak_indexes[numpy.where(
-                peak_counters == numpy.amax(peak_counters))[0]][0]
+            second_peak_index = peak_indexes[np.where(
+                peak_counters == np.amax(peak_counters))[0]][0]
             second_peak_duration = durations[second_peak_index]
             if largest_peak_duration < second_peak_duration:
                 dit_duration = largest_peak_duration
@@ -573,44 +555,44 @@ class MorseDecoder:
             # check beep length calculation reliability
             if dah_dit_ratio_detected >= self.dah_dot_ratio * (100 - self.dah_dit_ratio_variance) / 100 \
                     and dah_dit_ratio_detected <= self.dah_dot_ratio * (100 + self.dah_dit_ratio_variance) / 100:
-                wpm_reliable = True
+                self.config.wpm_reliable = True
                 break
             else:
-                peak_counters[numpy.where(
-                    peak_counters == numpy.amax(peak_counters))[0][0]] = 0
+                peak_counters[np.where(
+                    peak_counters == np.amax(peak_counters))[0][0]] = 0
 
         # calculate and update WPM
-        if wpm_reliable:
-            largest_peak_indexes = numpy.array(
+        if self.config.wpm_reliable:
+            largest_peak_indexes = np.array(
                 [largest_peak_index, second_peak_index])
 
             if self.graph_is_saving:
                 self.graph_largest_peak_indexes = largest_peak_indexes
 
-            dit_length_ms = dit_duration * self.CHUNK_LENGTH_MS
-            dah_length_ms = dah_duration * self.CHUNK_LENGTH_MS
+            dit_length_ms = dit_duration * self.config.CHUNK_LENGTH_MS
+            dah_length_ms = dah_duration * self.config.CHUNK_LENGTH_MS
 
-            wpm = int(round(1200 / dit_length_ms, 0))
+            self.config.receiver_wpm = int(round(1200 / dit_length_ms, 0))
             # more accurate ?
-            wpm = int(round(1200 / dah_length_ms * 3, 0))
+            self.config.receiver_wpm = int(round(1200 / dah_length_ms * 3, 0))
 
-            if self.wpm_autotune and wpm >= 2 and wpm <= 35:
-                self.wpm = wpm
+            if self.config.wpm_autotune and self.config.receiver_wpm >= 2 and self.config.receiver_wpm <= 35:
+                self.config.receiver_wpm = self.config.receiver_wpm
                 self.calculate_timings()
 
-            return "[{:2d}]".format(self.wpm)
+            return "[{:2d}]".format(self.config.receiver_wpm)
         else:
-            return "?{:2d}?".format(self.wpm)
+            return "?{:2d}?".format(self.config.receiver_wpm)
 
     def get_sound_level(self):
         sound_level = 0
 
         if len(self.sound_level_history) > 0:
 
-            sound_level = int(numpy.mean(self.sound_level_history))
+            sound_level = int(np.mean(self.sound_level_history))
 
-            if self.sound_level_autotune and sound_level >= self.THRESHOLD_LOW_LIMIT:
-                self.sound_level_threshold = int(sound_level * self.SNR)
+            if self.config.sound_level_autotune and sound_level >= self.config.THRESHOLD_LOW_LIMIT:
+                self.config.sound_level_threshold = int(sound_level * self.config.SNR)
 
         return sound_level
 

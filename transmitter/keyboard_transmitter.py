@@ -1,12 +1,15 @@
-
-from utils.morse_sound import MorseSound
-from utils.morse_lookup import MorseLookup
 from array import array
 from queue import Queue
 import threading
 import time
 
+from utils.morse_sound import MorseSound
+from utils.morse_lookup import MorseLookup
+from utils.config import Config
+
 class KeyboardTransmitter:
+
+    config = Config()
 
     transmitted_text = ""
     tranmitter_is_started = False
@@ -14,7 +17,7 @@ class KeyboardTransmitter:
 
     def __init__(self):
         # init transmit queue
-        self.keyboard_transmit_queue = Queue(maxsize=10000)
+        self.keyboard_transmit_queue = Queue(self.config.keyboard_transmit_queue_maxsize)
 
     def start_transmitter(self):
         self.sounder = MorseSound()

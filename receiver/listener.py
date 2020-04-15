@@ -7,17 +7,17 @@ from queue import Queue
 import pyaudio
 import wave
 import struct
-import numpy
+import numpy as np
+
+from utils.config import Config
+
 
 class MorseListener:
 
-    RATE = 44100  # frames per a second
-    CHUNK_LENGTH_MS = 5
-    FORMAT = pyaudio.paInt16
+    config = Config()
 
     audio_device_index = 0
     stop_is_requested = False
-    chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
 
     def stop(self):
         self.stop_is_requested = True
@@ -47,11 +47,11 @@ class MorseListener:
 
         p = pyaudio.PyAudio()
 
-        stream = p.open(format=self.FORMAT, channels=1, rate=self.RATE, input=True,
-                        input_device_index=self.audio_device_index, frames_per_buffer=self.chunk)
+        stream = p.open(format=self.config.FORMAT, channels=1, rate=self.config.RATE, input=True,
+                        input_device_index=self.audio_device_index, frames_per_buffer=self.config.chunk)
 
         while not self.stop_is_requested:
-            sound_data = stream.read(self.chunk, exception_on_overflow=False)
+            sound_data = stream.read(self.config.chunk, exception_on_overflow=False)
             morse_decoder_queue.put(sound_data)
 
         return

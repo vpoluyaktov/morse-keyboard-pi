@@ -25,16 +25,19 @@ try:
     import wave
 
 except ImportError as error:
-    print("You have to install some extras in order to use this shell script:")
+    print("You have to install some extras in order to use this application:")
     print(error)
     exit(1)
 
-
+from utils.config import Config
 from ui.themes.BlueTheme import BlueTheme
 from ui.themes.WhiteTheme import WhiteTheme
 from ui.main_form import MainForm
 
 class App(npyscreen.NPSAppManaged):
+
+    # get configuration
+    config = Config()
 
     # create logger
     logger = logging.getLogger('CWStation')

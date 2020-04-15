@@ -241,14 +241,14 @@ class MainForm(npyscreen.FormWithMenus):
         decoded_string = self.morse_decoder.get_buffer()
         if decoded_string != "":
             if self.is_transmitting:
-                decoded_string = self.log_box.conversation_separator + decoded_string    
+                decoded_string = self.log_box.config.MESSAGE_SEPARATOR + decoded_string    
             self.is_transmitting = False
             self.log_box.add_text(decoded_string)
         transmitted_text = self.keyboard_transmitter.get_transmitted_text()
         if transmitted_text != "":
             self.is_receiving = False
             if not self.is_transmitting:
-                transmitted_text = self.log_box.conversation_separator + transmitted_text  
+                transmitted_text = self.log_box.config.MESSAGE_SEPARATOR + transmitted_text  
                 self.is_transmitting = True  
             self.log_box.add_text(transmitted_text)
 
@@ -257,24 +257,24 @@ class MainForm(npyscreen.FormWithMenus):
         wpm = self.morse_decoder.get_wpm()
         sound_level = self.morse_decoder.get_sound_level()
 
-        self.level_autotune_checkbox.value = self.morse_decoder.sound_level_autotune
+        self.level_autotune_checkbox.value = self.morse_decoder.config.sound_level_autotune
         self.level_autotune_checkbox.display()
         #if self.morse_decoder.sound_level_autotune:
         if not self.level_field.editing:
             self.level_field.value = str(
-                self.morse_decoder.sound_level_threshold)
+                self.morse_decoder.config.sound_level_threshold)
             self.level_field.display()
 
-        self.freq_autotune_checkbox.value = self.morse_decoder.frequency_auto_tune
+        self.freq_autotune_checkbox.value = self.morse_decoder.config.frequency_auto_tune
         self.freq_autotune_checkbox.display()
-        if self.morse_decoder.frequency_auto_tune:
-            self.freq_field.value = str(int(self.morse_decoder.frequency))
+        if self.morse_decoder.config.frequency_auto_tune:
+            self.freq_field.value = str(int(self.morse_decoder.config.receiver_frequency))
             self.freq_field.display()
 
-        self.wpm_autotune_checkbox.value = self.morse_decoder.wpm_autotune
+        self.wpm_autotune_checkbox.value = self.morse_decoder.config.wpm_autotune
         self.wpm_autotune_checkbox.display()
-        if self.morse_decoder.wpm_autotune:
-            self.wpm_field.value = str(self.morse_decoder.wpm)
+        if self.morse_decoder.config.wpm_autotune:
+            self.wpm_field.value = str(self.morse_decoder.config.receiver_wpm)
             self.wpm_field.display()
 
         morse_ascii_history = self.morse_decoder.get_morse_ascii_history()
@@ -306,7 +306,7 @@ class MainForm(npyscreen.FormWithMenus):
         self.to_transmit_box.clear_text()
 
     def toggle_level_autotune(self):
-        self.morse_decoder.sound_level_autotune = self.level_autotune_checkbox.value
+        self.morse_decoder.config.sound_level_autotune = self.level_autotune_checkbox.value
         if self.level_autotune_checkbox.value: 
             npyscreen.notify("Enabling Sound Level autotuning may lead to many low level false detections",
                              title="Warning", form_color="WARNING")
@@ -315,22 +315,22 @@ class MainForm(npyscreen.FormWithMenus):
 
     def set_level(self):
         if self.level_field.value != "":
-            self.morse_decoder.sound_level_threshold = int(
+            self.morse_decoder.config.sound_level_threshold = int(
                 self.level_field.value)
 
     def toggle_freq_autotune(self):
-        self.morse_decoder.frequency_auto_tune = self.freq_autotune_checkbox.value
+        self.morse_decoder.config.frequency_auto_tune = self.freq_autotune_checkbox.value
 
     def set_freq(self):
         if self.freq_field.value != "":
-            self.morse_decoder.frequency = int(self.freq_field.value)
+            self.morse_decoder.config.frequency = int(self.freq_field.value)
 
     def toggle_wpm_autotune(self):
-        self.morse_decoder.wpm_autotune = self.wpm_autotune_checkbox.value
+        self.morse_decoder.config.wpm_autotune = self.wpm_autotune_checkbox.value
 
     def set_wpm(self):
         if self.wpm_field.value != "":
-            self.morse_decoder.wpm = int(self.wpm_field.value)
+            self.morse_decoder.config.receiver_wpm = int(self.wpm_field.value)
 
     def communication_log_save(self):
         file_name = datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + ".log"

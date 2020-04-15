@@ -3,15 +3,19 @@ import pyaudio
 import time
 import matplotlib.pyplot as plt
 
+from utils.config import Config
+
 
 class MorseSound:
 
+    config = Config()
+
     volume = 0.5     # range [0.0, 1.0]
     fs = 44100       # sampling rate, Hz
-    f = 650.0        # beep frequency, Hz
+    f = config.sender_frequency # beep frequency, Hz
     f_silence = 0  # silence frequency, Hz
 
-    wpm = 30
+    wpm = config.sender_wpm
     dah_dot_ratio = 3
 
     # envelope N ms raised cosine
