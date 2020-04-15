@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import numpy as np
 import pyaudio
 import time
@@ -13,7 +11,7 @@ class MorseSound:
     f = 650.0        # beep frequency, Hz
     f_silence = 0  # silence frequency, Hz
 
-    wpm = 35
+    wpm = 30
     dah_dot_ratio = 3
 
     # envelope N ms raised cosine

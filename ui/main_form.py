@@ -1,5 +1,4 @@
 import npyscreen
-
 import threading
 from queue import Queue
 import curses

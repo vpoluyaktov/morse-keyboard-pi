@@ -1,30 +1,19 @@
-#!/usr/bin/python3
-
-try:
-
-    from sys import byteorder
-    from array import array
-    from struct import pack
-    from collections import Counter
-    import os
-    import warnings
-    import wave
-    from time import sleep
-    from queue import Queue
-
-    import numpy
-
-except ImportError as error:
-    print("You have to install some extras in order to use this shell script:")
-    print(error)
-    exit(1)
+from sys import byteorder
+from array import array
+from struct import pack
+from collections import Counter
+import os
+import warnings
+import wave
+from time import sleep
+from queue import Queue
+import numpy
 
 warnings.filterwarnings("ignore", message="divide by zero encountered")
 warnings.filterwarnings("ignore", message="invalid value encountered")
 warnings.filterwarnings("ignore", message="Evaluate error")
 warnings.filterwarnings("ignore", message="Unknown PCM")
 warnings.filterwarnings("ignore", message="ALSA")
-
 
 class MorseDecoder:
 
@@ -51,7 +40,7 @@ class MorseDecoder:
     frequency_max = int(frequency * ((100 + frequency_variance) / 100))
 
     RATE = 44100  # frames per a second
-    CHUNK_LENGTH_MS = 10
+    CHUNK_LENGTH_MS = 5
 
     chunk = int(RATE / 1000 * CHUNK_LENGTH_MS)
     window = numpy.blackman(chunk)

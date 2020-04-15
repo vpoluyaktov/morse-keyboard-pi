@@ -1,21 +1,38 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-import logging
-import datetime
-
+# check dependencies
 try:
+    import array
+    import collections
+    import curses
+    import datetime
+    import logging
+    import matplotlib.pyplot as plt
     import npyscreen
+    import numpy
+    import os
+    import pyaudio
+    import queue
+    import struct
+    import struct
+    import sys
+    import textwrap
+    import threading
+    import time
+    import time
+    import warnings
+    import wave
 
 except ImportError as error:
     print("You have to install some extras in order to use this shell script:")
     print(error)
     exit(1)
 
+
 from ui.themes.BlueTheme import BlueTheme
 from ui.themes.WhiteTheme import WhiteTheme
 from ui.main_form import MainForm
-
 
 class App(npyscreen.NPSAppManaged):
 
