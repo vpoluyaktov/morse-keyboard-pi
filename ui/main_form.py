@@ -89,7 +89,7 @@ class MainForm(npyscreen.FormWithMenus):
         self.freq_autotune_checkbox = self.add(
             npyscreen.CheckBox, name="Freq Autotune", relx=self.receiver_control_box.relx + 3, width=21, highlight=True)
 
-        self.freq_field = self.add(
+        self.receiver_freq_field = self.add(
             npyscreen.TitleText, name="Frequency:", relx=self.receiver_control_box.relx + 3, begin_entry_at=17, field_width=23)
 
         self.add(npyscreen.FixedText, value="~" * (self.receiver_control_box.width-2),
@@ -98,7 +98,7 @@ class MainForm(npyscreen.FormWithMenus):
         self.wpm_autotune_checkbox = self.add(
             npyscreen.CheckBox, name="WPM Autotune", relx=self.receiver_control_box.relx + 3, width=21, highlight=True)
 
-        self.wpm_field = self.add(
+        self.receiver_wpm_field = self.add(
             npyscreen.TitleText, name="WPM:", relx=self.receiver_control_box.relx + 3, begin_entry_at=18, field_width=22)
 
         # Control bindings
@@ -109,15 +109,36 @@ class MainForm(npyscreen.FormWithMenus):
         self.level_autotune_checkbox.whenToggled = self.toggle_level_autotune
         self.level_field.when_value_edited = self.set_level
         self.freq_autotune_checkbox.whenToggled = self.toggle_freq_autotune
-        self.freq_field.when_value_edited = self.set_freq
+        self.receiver_freq_field.when_value_edited = self.set_receiver_freq
         self.wpm_autotune_checkbox.whenToggled = self.toggle_wpm_autotune
-        self.wpm_field.when_value_edited = self.set_wpm
+        self.receiver_wpm_field.when_value_edited = self.set_receiver_wpm
 
     def add_sender_contorls_box(self):
         # Sender Controls
         self.sender_control_box = self.add(BoxTitleColor, name="Sender Controls", relx=3,
                                            rely=self.receiver_control_box.rely + self.receiver_control_box.height, width=26,
                                            scroll_exit=True, editable=False)
+
+        self.transmitter_start_stop_button = self.add(
+            npyscreen.ButtonPress, name="[ Start transmitter ]", relx=self.sender_control_box.relx + 1,
+            rely=self.sender_control_box.rely + 1)
+        
+        self.add(npyscreen.FixedText, value="~" * (self.receiver_control_box.width-2),
+                 relx=self.sender_control_box.relx + 1, editable=False)    
+
+        self.transmitter_freq_field = self.add(
+            npyscreen.TitleText, name="Frequency:", relx=self.sender_control_box.relx + 3, begin_entry_at=17, field_width=23,
+            value = str(self.keyboard_transmitter.config.sender_frequency))    
+    
+        self.transmitter_wpm_field = self.add(
+            npyscreen.TitleText, name="WPM:", relx=self.sender_control_box.relx + 3, begin_entry_at=18, field_width=22,
+            value = str(self.keyboard_transmitter.config.sender_wpm))
+        
+        # Control bindings
+        self.transmitter_start_stop_button.whenPressed = self.keyboard_transmitter_start_stop
+        self.transmitter_freq_field.when_value_edited = self.set_transmitter_freq
+        self.transmitter_wpm_field.when_value_edited = self.set_transmitter_wpm
+
 
     def add_log_box(self):
         # Log Box
@@ -214,10 +235,14 @@ class MainForm(npyscreen.FormWithMenus):
     def keyboard_transmitter_start_stop(self):
         if self.keyboard_transmitter.tranmitter_is_started:
             self.keyboard_transmitter.stop_transmitter()
+            self.transmitter_start_stop_button.name="[ Start transmitter ]"
             self.send_pause_resume_button.name="[ Resume   ]"
+
         else:
-            self.keyboard_transmitter.start_transmitter()      
+            self.keyboard_transmitter.start_transmitter()    
+            self.transmitter_start_stop_button.name="[ Stop transmitter  ]"  
             self.send_pause_resume_button.name="[ Pause    ]"    
+
 
     def start_receiver(self):
         self.morse_decoder_queue.queue.clear()
@@ -268,14 +293,17 @@ class MainForm(npyscreen.FormWithMenus):
         self.freq_autotune_checkbox.value = self.morse_decoder.config.frequency_auto_tune
         self.freq_autotune_checkbox.display()
         if self.morse_decoder.config.frequency_auto_tune:
-            self.freq_field.value = str(int(self.morse_decoder.config.receiver_frequency))
-            self.freq_field.display()
+            self.receiver_freq_field.value = str(int(self.morse_decoder.config.receiver_frequency))
+            self.receiver_freq_field.display()
 
         self.wpm_autotune_checkbox.value = self.morse_decoder.config.wpm_autotune
         self.wpm_autotune_checkbox.display()
         if self.morse_decoder.config.wpm_autotune:
-            self.wpm_field.value = str(self.morse_decoder.config.receiver_wpm)
-            self.wpm_field.display()
+            self.receiver_wpm_field.value = str(self.morse_decoder.config.receiver_wpm)
+            self.receiver_wpm_field.display()
+
+        # self.transmitter_freq_field.value = self.keyboard_transmitter.config.sender_frequency
+        # self.transmitter_wpm_field.value = self.keyboard_transmitter.config.sender_wpm    
 
         morse_ascii_history = self.morse_decoder.get_morse_ascii_history()
 
@@ -321,16 +349,16 @@ class MainForm(npyscreen.FormWithMenus):
     def toggle_freq_autotune(self):
         self.morse_decoder.config.frequency_auto_tune = self.freq_autotune_checkbox.value
 
-    def set_freq(self):
-        if self.freq_field.value != "":
-            self.morse_decoder.config.frequency = int(self.freq_field.value)
+    def set_receiver_freq(self):
+        if self.receiver_freq_field.value != "":
+            self.morse_decoder.config.frequency = int(self.receiver_freq_field.value)
 
     def toggle_wpm_autotune(self):
         self.morse_decoder.config.wpm_autotune = self.wpm_autotune_checkbox.value
 
-    def set_wpm(self):
-        if self.wpm_field.value != "":
-            self.morse_decoder.config.receiver_wpm = int(self.wpm_field.value)
+    def set_receiver_wpm(self):
+        if self.receiver_wpm_field.value != "":
+            self.morse_decoder.config.receiver_wpm = int(self.receiver_wpm_field.value)
 
     def communication_log_save(self):
         file_name = datetime.now().strftime("%Y-%m-%d_%H:%M:%S") + ".log"
@@ -341,6 +369,20 @@ class MainForm(npyscreen.FormWithMenus):
     def communication_log_clear(self):
         self.log_box.clear_text()
         self.morse_decoder.clear_morse_ascii_history()
+
+    def set_transmitter_freq(self):
+        if self.transmitter_freq_field.value != "":
+            self.keyboard_transmitter.config.frequency = int(self.transmitter_freq_field.value)
+            if self.keyboard_transmitter.tranmitter_is_started:
+                self.keyboard_transmitter.stop_transmitter()
+                self.keyboard_transmitter.start_transmitter()
+    
+    def set_transmitter_wpm(self):
+        if self.transmitter_wpm_field.value != "":
+            self.keyboard_transmitter.config.sender_wpm = int(self.transmitter_wpm_field.value)
+            if self.keyboard_transmitter.tranmitter_is_started:
+                self.keyboard_transmitter.stop_transmitter()
+                self.keyboard_transmitter.start_transmitter()
 
     def receiver_refresh_device_list(self):
         receiver_device_list = [
