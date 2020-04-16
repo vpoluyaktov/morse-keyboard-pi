@@ -12,6 +12,7 @@ class KeyboardTransmitter:
     config = Config()
 
     transmitted_text = ""
+    morse_ascii_history = ""
     tranmitter_is_started = False
     sounder = None
 
@@ -41,7 +42,7 @@ class KeyboardTransmitter:
         text_to_transmit = str.upper(text_to_transmit)
         for char in text_to_transmit:
             self.keyboard_transmit_queue.put(char)
-        self.keyboard_transmit_queue.put("<BT>\n")
+        self.keyboard_transmit_queue.put("<BT>")
 
     def process_queue(self, keyboard_transmit_queue):
         while not self.stop_is_requested:
@@ -67,4 +68,11 @@ class KeyboardTransmitter:
     def char_to_morse(self, char):
         morse_code = self.morse_lookup.get_code_by_char(char)
         if morse_code != "":
+            self.morse_ascii_history += (morse_code + " ")
             self.sounder.play_morse_code(morse_code)
+
+    def get_morse_ascii_history(self):
+        return self.morse_ascii_history
+
+    def clear_morse_ascii_history(self):
+        self.morse_ascii_history = ""        

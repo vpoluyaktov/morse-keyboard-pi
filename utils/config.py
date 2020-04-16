@@ -39,5 +39,5 @@ class Config:
 
     # Keyboard transmitter parameters
     keyboard_transmit_queue_maxsize = 10000
-    sender_frequency = 400
+    sender_frequency = 550
     sender_wpm = 20
