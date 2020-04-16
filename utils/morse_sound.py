@@ -12,16 +12,15 @@ class MorseSound:
 
     volume = 0.5     # range [0.0, 1.0]
     fs = 44100       # sampling rate, Hz
-    f = config.sender_frequency # beep frequency, Hz
+    f = 500     # beep frequency, Hz
     f_silence = 0  # silence frequency, Hz
-
-    wpm = config.sender_wpm
     dah_dot_ratio = 3
 
     # envelope N ms raised cosine
     attack_release_ms = 50
 
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
         self.p = pyaudio.PyAudio()
         # for paFloat32 sample values must be in range [-1.0, 1.0]
         self.stream = self.p.open(format=pyaudio.paFloat32,
@@ -33,11 +32,16 @@ class MorseSound:
         self.calcualate_timings()
         self.generate_samples()
 
+
     def calcualate_timings(self):
+        self.wpm = self.config.sender_wpm
         self.dit_duration_ms = int(1200 / self.wpm)
         self.dah_duration_ms = self.dit_duration_ms * self.dah_dot_ratio
 
+
     def generate_samples(self):
+
+        self.f = self.config.sender_frequency
 
         self.samples_dit = (np.sin(2 * np.pi * np.arange(self.fs * self.dit_duration_ms/1000)
                                    * self.f / self.fs)).astype(np.float32) * self.volume

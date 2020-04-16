@@ -20,7 +20,7 @@ class KeyboardTransmitter:
         self.keyboard_transmit_queue = Queue(self.config.keyboard_transmit_queue_maxsize)
 
     def start_transmitter(self):
-        self.sounder = MorseSound()
+        self.sounder = MorseSound(self.config)
         self.morse_lookup = MorseLookup()
         self.stop_is_requested = False
         self.keyboard_transmitter_thread = threading.Thread(target=self.process_queue, args=(
@@ -30,6 +30,10 @@ class KeyboardTransmitter:
 
     def stop_transmitter(self):
         self.stop_is_requested = True
+        self.keyboard_transmit_queue.put('')
+        # wait until the transmitter is really stopped
+        while self.tranmitter_is_started:
+            None
 
     def transmit(self, text_to_transmit):
         if not self.tranmitter_is_started:
